@@ -167,7 +167,6 @@ echo.
 echo  Pre-Alpha Status: READY FOR TESTING
 echo ================================================
 echo.
-echo Press any key to exit...
-pause > nul
+pause
 
 endlocal
