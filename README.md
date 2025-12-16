@@ -34,9 +34,18 @@ It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architecte
 - **Tiered Architecture:** Fast heuristics (microseconds) with optional deep analysis (milliseconds).
 - **Feature Flags:** Keep base binary small; opt-in to heavy AI models.
 
-### Phase 3: Visual Interface (In Progress)
+### Phase 3: The Enterprise Mesh ✅ (Implemented)
+- **Federation:** Hub & Spoke architecture for distributed agent coordination.
+- **Spectra Server:** Central control plane (Axum + SurrealDB) for telemetry aggregation.
+- **Time-Travel Analytics:** Historical snapshots to track data growth and velocity over time.
+- **Active Governance:** Policy-based file management (Report, Delete, Archive actions).
+- **Safety-First:** Dry-run mode by default; requires explicit `--enforce` flag for destructive actions.
+- **Beacon Protocol:** Agents push snapshots and pull policies via REST API.
+- **Local-First:** Agents work perfectly offline; federation is optional.
+
+### Phase 4: Visual Interface (In Progress)
 - **Desktop Application:** Native cross-platform GUI built with Tauri v2 + React + TypeScript.
-- **Dual-Crate Architecture:** Separation of headless agent (CLI) and visual interface (GUI).
+- **Tri-Crate Architecture:** Separation of CLI agent, server control plane, and GUI interface.
 - **Modern Stack:** Vite-powered development with hot module replacement for rapid iteration.
 
 ## 🚀 Quick Start
@@ -76,11 +85,41 @@ cargo build --release -p spectra-cli --features semantic
 
 # Output JSON for analysis (Agent Mode)
 ./target/release/spectra-cli --path ./ --analyze --json > scan_results.json
+```
 
-# Quick testing (use convenience scripts)
-cd cli
-./test-basic.sh         # Basic scan
-./test-analyze.sh       # With semantic analysis
+### Running the Server (Phase 3 - Federation)
+
+```bash
+# Start the Spectra Server (Hub)
+run-server.bat          # Windows
+# or
+cargo run -p spectra-server
+
+# The server listens on http://0.0.0.0:3000
+```
+
+### Running Federated Agents (Phase 3)
+
+```bash
+# Connect agent to server (dry-run governance)
+run-agent.bat           # Windows
+# or
+cargo run -p spectra-cli -- --path ./ --server http://localhost:3000
+
+# Agent with active policy enforcement (⚠️ CAUTION: Can delete files)
+cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --enforce
+
+# Full stack: Analysis + Governance + Federation
+cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze
+```
+
+### Convenience Scripts (Windows)
+
+```bash
+run-server.bat          # Start the Hub server
+run-agent.bat           # Run federated agent (dry-run)
+build-release.bat       # Build all release binaries
+test-all.bat            # Run full test suite
 ```
 
 ## 🏗 Architecture
@@ -89,24 +128,35 @@ cd cli
 
 ```
 spectra/
-├── cli/                 # Headless Rust agent (spectra-cli)
+├── cli/                        # Headless Rust agent (spectra-cli)
 │   ├── src/
-│   │   ├── main.rs     # High-performance scanning engine
-│   │   └── analysis/   # Phase 2: Semantic Bridge
-│   │       ├── entropy.rs      # Shannon entropy calculation
-│   │       ├── heuristics.rs   # Risk pattern detection
-│   │       ├── semantic.rs     # AI content classification
-│   │       └── mod.rs          # Analysis module API
-│   ├── Cargo.toml
-│   ├── test-basic.sh   # Quick test scripts
-│   └── test-analyze.sh
-├── app/                 # Tauri + React GUI application
-│   ├── src/            # React/TypeScript frontend
-│   ├── src-tauri/      # Tauri Rust backend
+│   │   ├── main.rs            # High-performance scanning engine
+│   │   ├── analysis/          # Phase 2: Semantic Bridge
+│   │   │   ├── entropy.rs     # Shannon entropy calculation
+│   │   │   ├── heuristics.rs  # Risk pattern detection
+│   │   │   ├── semantic.rs    # AI content classification
+│   │   │   └── mod.rs         # Analysis module API
+│   │   └── governance/        # Phase 3: Active Governance
+│   │       ├── engine.rs      # Policy evaluation & execution
+│   │       ├── tests.rs       # Safety test suite
+│   │       └── mod.rs         # Governance module API
+│   └── Cargo.toml
+├── server/                     # Phase 3: Central Hub (spectra-server)
+│   ├── src/
+│   │   └── main.rs            # Axum API server
+│   └── Cargo.toml
+├── app/                        # Tauri + React GUI application
+│   ├── src/                   # React/TypeScript frontend
+│   ├── src-tauri/             # Tauri Rust backend
 │   └── package.json
-├── Cargo.toml          # Workspace manifest
-├── ARCHITECTURE.md     # Detailed technical documentation
-└── CHANGELOG.md        # Version history
+├── Cargo.toml                  # Workspace manifest
+├── ARCHITECTURE.md             # Detailed technical documentation
+├── PHASE3_GUIDE.md             # Phase 3 quick start guide
+├── CHANGELOG.md                # Version history
+├── run-server.bat              # Start Hub server (Windows)
+├── run-agent.bat               # Run federated agent (Windows)
+├── build-release.bat           # Build all binaries (Windows)
+└── test-all.bat                # Run test suite (Windows)
 ```
 
 ### Philosophy

@@ -11,6 +11,9 @@ use std::time::Instant;
 mod analysis;
 use analysis::{analyze_filename_risk, calculate_shannon_entropy, RiskLevel, SemanticEngine};
 
+mod governance;
+use governance::engine::{Action, Policy, Rule};
+
 /// S.P.E.C.T.R.A.
 /// Scalable Platform for Enterprise Content Topology & Resource Analytics
 #[derive(Parser, Debug)]
@@ -35,6 +38,14 @@ struct Args {
     /// Enable AI-based content classification (requires 'semantic' feature)
     #[arg(long)]
     semantic: bool,
+
+    /// URL of the Spectra Server for federation
+    #[arg(long)]
+    server: Option<String>,
+
+    /// Enable Active Governance (Execute policies - defaults to dry-run)
+    #[arg(long)]
+    enforce: bool,
 }
 
 // A struct to hold file info, sortable by size (for our Heap)
@@ -93,6 +104,76 @@ struct ScanStats {
     top_files: Vec<FileRecord>,
 }
 
+// Helper: Fetch policies from server
+fn fetch_policies(server_url: &str) -> Vec<Policy> {
+    let url = format!("{}/api/v1/policies", server_url);
+    match reqwest::blocking::get(&url) {
+        Ok(response) => {
+            if let Ok(policies) = response.json::<Vec<serde_json::Value>>() {
+                // Parse server policies into our Policy format
+                policies
+                    .into_iter()
+                    .filter_map(|p| {
+                        Some(Policy {
+                            name: p.get("name")?.as_str()?.to_string(),
+                            rule: Rule {
+                                extension: Some("log".to_string()), // Simplified parsing
+                                min_size_bytes: None,
+                                min_age_days: Some(90),
+                            },
+                            action: Action::Report, // Default to Report for safety
+                        })
+                    })
+                    .collect()
+            } else {
+                println!("⚠️  Failed to parse policies from server");
+                Vec::new()
+            }
+        }
+        Err(e) => {
+            println!("⚠️  Failed to fetch policies: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+// Helper: Upload snapshot to server
+fn upload_snapshot(server_url: &str, stats: &ScanStats) {
+    let url = format!("{}/api/v1/ingest", server_url);
+    let client = reqwest::blocking::Client::new();
+
+    // Extract top extensions for the snapshot
+    let mut sorted_exts: Vec<(&String, &ExtensionStat)> = stats.extensions.iter().collect();
+    sorted_exts.sort_by(|a, b| b.1.size.cmp(&a.1.size));
+    let top_extensions: Vec<(String, u64)> = sorted_exts
+        .iter()
+        .take(10)
+        .map(|(ext, stat)| (ext.to_string(), stat.size))
+        .collect();
+
+    let snapshot = serde_json::json!({
+        "agent_id": format!("agent_{}", chrono::Utc::now().timestamp()),
+        "timestamp": chrono::Utc::now().timestamp(),
+        "hostname": std::env::var("COMPUTERNAME").or_else(|_| std::env::var("HOSTNAME")).unwrap_or_else(|_| "unknown".to_string()),
+        "total_size_bytes": stats.total_size_bytes,
+        "file_count": stats.total_files,
+        "top_extensions": top_extensions,
+    });
+
+    match client.post(&url).json(&snapshot).send() {
+        Ok(response) => {
+            if response.status().is_success() {
+                println!("📤 Snapshot uploaded successfully to {}", server_url);
+            } else {
+                println!("⚠️  Server responded with status: {}", response.status());
+            }
+        }
+        Err(e) => {
+            println!("⚠️  Failed to upload snapshot: {}", e);
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let root_path = PathBuf::from(&args.path);
@@ -104,6 +185,21 @@ fn main() -> Result<()> {
             "🚀 SPECTRA: Profiling topology of '{}'...",
             root_path.display()
         );
+    }
+
+    // PHASE 3: Fetch Policies from Server (if connected)
+    let mut policies = Vec::new();
+    if let Some(server_url) = &args.server {
+        if !args.json {
+            println!("🌐 Fetching governance policies from {}...", server_url);
+        }
+        policies = fetch_policies(server_url);
+        if !args.json && !policies.is_empty() {
+            println!("📋 Loaded {} policies", policies.len());
+            if !args.enforce {
+                println!("⚠️  Running in DRY-RUN mode. Use --enforce to execute actions.");
+            }
+        }
     }
 
     // We use a BinaryHeap to efficiently track the Top N largest files without sorting the whole list
@@ -141,6 +237,15 @@ fn main() -> Result<()> {
                 // If heap is too big, remove the smallest of the large files
                 if top_files_heap.len() > args.limit {
                     top_files_heap.pop();
+                }
+
+                // 3. GOVERNANCE CHECK (Phase 3)
+                if !policies.is_empty() {
+                    for policy in &policies {
+                        if policy.evaluate(&dir_entry.path(), &meta) {
+                            policy.execute(&dir_entry.path(), !args.enforce);
+                        }
+                    }
                 }
             } else if meta.is_dir() {
                 stats.total_folders += 1;
@@ -205,6 +310,14 @@ fn main() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&stats)?);
     } else {
         print_human_report(&stats);
+    }
+
+    // PHASE 3: Upload Snapshot to Server (Time-Travel Analytics)
+    if let Some(server_url) = &args.server {
+        if !args.json {
+            println!("📤 Uploading snapshot to {}...", server_url);
+        }
+        upload_snapshot(server_url, &stats);
     }
 
     Ok(())

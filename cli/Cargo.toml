@@ -18,6 +18,11 @@ humansize = "2.0"    # Readable units
 regex = "1.10"
 lazy_static = "1.4"
 
+# Phase 3: Federation & Governance
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+chrono = "0.4"
+config = "0.13"
+
 # Phase 2: Semantic (Optional Feature)
 # rust-bert pulls in libtorch (~500MB+). We gate it.
 [dependencies.rust-bert]

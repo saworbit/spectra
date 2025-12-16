@@ -189,25 +189,157 @@ cargo run -p spectra-cli --features semantic -- --path ./ --semantic
 - [ ] Custom pattern configuration files
 - [ ] Machine learning model fine-tuning for enterprise domains
 
-### Phase 3: The Enterprise Mesh
+### Phase 3: The Enterprise Mesh (Implemented ✅)
 
-**Goal:** Federated Governance.
+**Goal:** Federated Governance, Historical Analytics, and Active Policy Enforcement.
 
-- **The "Spectra Server":** A central dashboard that aggregates metadata from all deployed agents.
-- **Time-Travel:** "Show me how our data footprint changed over the last 6 months."
-- **Active Governance:** Policy enforcement (e.g., "Automatically archive .log files older than 90 days").
+We have transitioned from Local-Only to Local-First, Cloud-Aware. Spectra now possesses "Memory" and "Hands."
+
+#### Hub & Spoke Architecture
+
+The system now operates as a distributed control plane with central coordination:
+
+- **The Hub (spectra-server):** High-performance Rust server (Axum + SurrealDB) that:
+  - Ingests telemetry snapshots from distributed agents
+  - Stores historical topology data for time-travel analysis
+  - Distributes governance policies to all connected agents
+  - Provides REST API for analytics and control
+
+- **The Spoke (spectra-cli):** Enhanced agent with "Beacon" capabilities:
+  - Pushes compressed JSON snapshots to the Hub
+  - Pulls governance policies from the Hub
+  - Executes policies with built-in safety mechanisms
+  - Maintains local-first operation (works offline)
+
+#### Module Structure
+
+**Server Crate:** `server/`
+- `src/main.rs` - HTTP/2 API server with Axum
+- `/api/v1/ingest` - Receives agent snapshots (time-series data)
+- `/api/v1/policies` - Distributes governance rules to agents
+
+**CLI Governance Module:** `cli/src/governance/`
+- `engine.rs` - Policy evaluation and execution engine
+- `tests.rs` - Comprehensive safety tests for governance actions
+- `mod.rs` - Module interface
+
+#### Key Features
+
+1. **Time-Travel Analytics:**
+   - Agents send periodic snapshots (metadata only, not raw files)
+   - Server stores snapshots with timestamps
+   - Calculate "Data Velocity" by comparing snapshots at T₀ vs T₁
+   - Answer questions like: "How fast is our data growing?" "What changed this month?"
+   - Top extensions tracking across the fleet
+
+2. **Active Governance Engine:**
+   - Rule-based policy evaluation (extension, size, age thresholds)
+   - Three action types: Report, Delete, Archive
+   - **Safety-First Design:**
+     - Defaults to DRY-RUN mode (reports only)
+     - Requires explicit `--enforce` flag for destructive actions
+     - Double-checks before file deletion
+     - Comprehensive test coverage
+   - Policies distributed from central server
+   - Local policy configuration support
+
+3. **Federation Protocol:**
+   - REST over HTTP/2 for deployment ease
+   - MessagePack for compressed payloads (future enhancement)
+   - Secure agent authentication (planned)
+   - Offline-capable agents with local policy cache
+
+#### Implementation Details
+
+**Agent Snapshot Format:**
+```rust
+{
+    "agent_id": "agent_1734394726",
+    "timestamp": 1734394726,
+    "hostname": "DESKTOP-XYZ",
+    "total_size_bytes": 524288000,
+    "file_count": 15234,
+    "top_extensions": [
+        ("log", 125829120),
+        ("tmp", 89653248),
+        ("json", 45678912)
+    ]
+}
+```
+
+**Policy Structure:**
+```rust
+Policy {
+    name: "Cleanup Old Logs",
+    rule: Rule {
+        extension: Some("log"),
+        min_size_bytes: None,
+        min_age_days: Some(90)
+    },
+    action: Action::Report  // or Delete, Archive
+}
+```
+
+#### Safety & Security
+
+- **No Raw Data Upload:** Only metadata summaries are transmitted
+- **Dry-Run by Default:** Governance actions require explicit `--enforce` flag
+- **Audit Trail:** All policy executions are logged
+- **Local Autonomy:** Agents continue operating if server is unreachable
+- **Policy Validation:** Server-side and client-side policy validation
+
+#### Usage
+
+**Starting the Hub:**
+```bash
+cd server
+cargo run
+
+# Server starts on http://0.0.0.0:3000
+```
+
+**Agent with Server Connection:**
+```bash
+# Scan and upload snapshot (dry-run governance)
+cargo run -p spectra-cli -- --path ./ --server http://localhost:3000
+
+# Scan with active policy enforcement
+cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --enforce
+
+# Analyze with governance
+cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze --enforce
+```
+
+#### Implementation Status
+
+- [x] Spectra Server scaffolding (Axum + basic endpoints)
+- [x] Agent snapshot ingestion API
+- [x] Policy distribution API
+- [x] Governance engine with rule evaluation
+- [x] Safety mechanisms (dry-run mode)
+- [x] CLI integration with `--server` and `--enforce` flags
+- [x] Snapshot upload from agents
+- [x] Comprehensive governance tests
+- [ ] SurrealDB integration for persistent storage
+- [ ] Time-travel query interface
+- [ ] Agent authentication and authorization
+- [ ] Policy management UI
+- [ ] Growth rate analytics and alerting
+- [ ] Archive functionality implementation
+- [ ] Custom policy configuration files
 
 ## 5. Build & Development Workflow
 
 ### Workspace Structure
 
-The project uses Cargo's workspace feature to manage both crates:
+The project uses Cargo's workspace feature to manage all three crates:
 
 ```toml
 [workspace]
 members = [
     "cli",
-    "app/src-tauri"
+    "app/src-tauri",
+    "server"
 ]
 resolver = "2"
 ```
@@ -241,17 +373,38 @@ npm run tauri dev
 npm run tauri build
 ```
 
+**Server Development:**
+```bash
+# Build the server
+cargo build -p spectra-server
+
+# Run the server (listens on port 3000)
+cargo run -p spectra-server
+
+# Release build
+cargo build --release -p spectra-server
+
+# Run tests
+cargo test -p spectra-server
+```
+
 ### Deployment Targets
 
 **CLI Agent:**
 - Single binary: `target/release/spectra-cli` (or `.exe` on Windows)
 - No runtime dependencies
-- Suitable for: Server deployments, automation scripts, CI/CD pipelines
+- Suitable for: Server deployments, automation scripts, CI/CD pipelines, distributed agents
 
 **GUI Application:**
 - Platform-specific installers: `.msi` (Windows), `.dmg` (macOS), `.deb`/`.appimage` (Linux)
 - Native performance with web UI flexibility
 - Suitable for: Desktop users, data analysts, administrators
+
+**Spectra Server:**
+- Single binary: `target/release/spectra-server` (or `.exe` on Windows)
+- Requires network access (listens on port 3000 by default)
+- Suitable for: Central control plane, fleet management, historical analytics
+- Deployment options: Docker container, systemd service, Windows service
 
 ## 6. Coding Standards & Principles
 
