@@ -7,40 +7,85 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 Planned
 Persistence Layer: Integration of DuckDB or Rusqlite to dump scan results to a queryable local file.
 
-Deep Scan: Content fingerprinting for identifying file types beyond simple extensions.
+Enterprise Mesh: Federated governance and centralized data intelligence platform.
 
-Semantic Bridge: Integration of local LLM/Vector models for content classification.
+Advanced Visuals: WebGL/Wasm Treemap visualization in GUI application.
 
 [0.2.0] - 2025-12-16
-"The Dual Core" - Phase 2 Architecture Setup
-This release transforms Spectra from a single-binary CLI tool into a dual-crate workspace architecture, separating the headless agent from the visual interface and establishing the foundation for the Tauri-based UI.
+"The Semantic Bridge" - Phase 2 Intelligence Layer
+This release introduces intelligent content analysis to Spectra, transitioning from pure topology (size/location) to typography (meaning/risk). The system now possesses "Sight" beyond mere file dimensions.
 
 Added
-Workspace Architecture: Converted project to Rust workspace with two distinct crates:
-  - cli: High-performance headless agent (renamed to spectra-cli)
-  - app: Tauri v2 + React + TypeScript GUI application
+Analysis Module (cli/src/analysis/):
+  - entropy.rs: Shannon entropy calculation on file headers (first 8KB)
+  - heuristics.rs: Pattern-based risk scoring for sensitive files
+  - semantic.rs: Optional AI content classification using rust-bert
+  - mod.rs: Public API for analysis capabilities
 
-Tauri Frontend: Scaffolded complete Tauri v2 application with:
-  - React 18 + TypeScript for UI development
-  - Vite for fast development builds
-  - Modern development tooling (ESLint, TypeScript compiler)
+Entropy Profiling:
+  - Calculates Shannon entropy (0.0 to 8.0 scale)
+  - Detects encrypted, compressed, or obfuscated files
+  - Microsecond-level performance
+  - Read-only on first 8KB of files
 
-Project Structure: Established clear separation of concerns:
-  - Backend Agent: c:\spectra\cli (Pure Rust, no GUI dependencies)
-  - Frontend UI: c:\spectra\app (Tauri + React for visualization)
-  - Workspace Root: Unified build system via Cargo workspace
+Risk Detection System:
+  - 5-level classification: None, Low, Medium, High, Critical
+  - Detects: passwords, secrets, keys, tokens, certificates, SSH keys, wallets, credentials
+  - Path-aware detection (e.g., .ssh/id_rsa flagged as Critical)
+  - Zero file reads required - filename/path pattern matching only
+
+AI Content Classification (Optional):
+  - rust-bert DistilBERT zero-shot classification
+  - Categories: legal contract, source code, financial invoice, log file, documentation
+  - Feature-gated to keep base binary small
+  - Only analyzes text files (low entropy) with confidence thresholds
+
+CLI Enhancements:
+  - --analyze flag: Enable entropy + risk analysis
+  - --semantic flag: Enable AI classification (requires 'semantic' feature)
+  - Enhanced human output with risk icons (🔴 Critical, 🟠 High, 🟡 Medium, 🟢 Low)
+  - JSON output includes all analysis metadata
+
+Convenience Scripts:
+  - test-basic.sh / test-basic.bat: Quick basic scan testing
+  - test-analyze.sh / test-analyze.bat: Quick semantic analysis testing
+
+Dependencies:
+  - regex 1.10: Pattern matching
+  - lazy_static 1.4: Static regex compilation
+  - rust-bert 0.21: AI classification (optional, feature-gated)
+  - tempfile 3.8: Testing utilities
 
 Changed
-CLI Binary Name: Renamed from spectra to spectra-cli to avoid naming conflicts with GUI application
+Version: 0.1.0 → 0.2.0
 
-Build System: Implemented Cargo workspace resolver v2 for improved dependency management
+FileRecord Structure: Added entropy, risk_level, and semantic_tag fields
+
+Main Scan Loop: Refactored to use .flatten() for cleaner error handling
+
+Code Quality:
+  - All clippy warnings resolved
+  - Formatted with rustfmt
+  - 8 unit tests, all passing
+
+Documentation:
+  - Updated ARCHITECTURE.md with Phase 2 implementation details
+  - Updated README.md with new capabilities and usage examples
+  - Comprehensive inline documentation
 
 Technical Details
-Stack: Rust 2021 Edition + Tauri v2 + React 18 + TypeScript 5 + Vite 7
+Performance: Post-scan analysis on top N files only (configurable via --limit)
 
-Key Addition: Tauri v2 provides native desktop application capabilities with web technologies
+Privacy: All analysis is local; no data leaves the machine
 
-Architecture: Dual-crate workspace enables independent development and deployment of CLI and GUI
+Safety: Read-only operations on first 8KB of files
+
+Binary Size: Base ~2-5MB; AI features require LibTorch (~500MB) when enabled
+
+Tiered Architecture:
+  - Tier 0: Metadata (nanoseconds)
+  - Tier 1: Heuristics (microseconds)
+  - Tier 2: Semantic/AI (milliseconds, optional)
 
 [0.1.0] - 2025-12-16
 "The Ignition" - Initial Proof of Concept

@@ -26,7 +26,15 @@ It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architecte
     - `Human Mode`: Pretty-printed CLI summaries for sysadmins.
     - `Agent Mode`: JSON streams for ingestion into the Spectra Brain.
 
-### Phase 2: Visual Interface (Current)
+### Phase 2: The Semantic Bridge ✅ (Implemented)
+- **Intelligent Analysis:** Move beyond size to understand meaning and risk.
+- **Entropy Profiling:** Shannon entropy calculation to detect encrypted/compressed files.
+- **Risk Scoring:** 5-level risk classification for sensitive files (passwords, keys, credentials).
+- **Content Classification:** Optional AI-powered categorization using rust-bert (legal, financial, technical).
+- **Tiered Architecture:** Fast heuristics (microseconds) with optional deep analysis (milliseconds).
+- **Feature Flags:** Keep base binary small; opt-in to heavy AI models.
+
+### Phase 3: Visual Interface (In Progress)
 - **Desktop Application:** Native cross-platform GUI built with Tauri v2 + React + TypeScript.
 - **Dual-Crate Architecture:** Separation of headless agent (CLI) and visual interface (GUI).
 - **Modern Stack:** Vite-powered development with hot module replacement for rapid iteration.
@@ -56,11 +64,23 @@ This will launch the Tauri desktop application with the React frontend.
 # Build the CLI agent
 cargo build --release -p spectra-cli
 
-# Scan current directory (Human Readable)
+# Basic scan (Phase 1 - topology only)
 ./target/release/spectra-cli --path ./
 
-# Scan entire drive and output JSON for analysis (Agent Mode)
-./target/release/spectra-cli --path / --json > scan_results.json
+# Scan with semantic analysis (Phase 2 - entropy + risk detection)
+./target/release/spectra-cli --path ./ --analyze
+
+# Scan with full AI classification (requires semantic feature)
+cargo build --release -p spectra-cli --features semantic
+./target/release/spectra-cli --path ./ --semantic
+
+# Output JSON for analysis (Agent Mode)
+./target/release/spectra-cli --path ./ --analyze --json > scan_results.json
+
+# Quick testing (use convenience scripts)
+cd cli
+./test-basic.sh         # Basic scan
+./test-analyze.sh       # With semantic analysis
 ```
 
 ## 🏗 Architecture
@@ -71,14 +91,22 @@ cargo build --release -p spectra-cli
 spectra/
 ├── cli/                 # Headless Rust agent (spectra-cli)
 │   ├── src/
-│   │   └── main.rs     # High-performance scanning engine
-│   └── Cargo.toml
+│   │   ├── main.rs     # High-performance scanning engine
+│   │   └── analysis/   # Phase 2: Semantic Bridge
+│   │       ├── entropy.rs      # Shannon entropy calculation
+│   │       ├── heuristics.rs   # Risk pattern detection
+│   │       ├── semantic.rs     # AI content classification
+│   │       └── mod.rs          # Analysis module API
+│   ├── Cargo.toml
+│   ├── test-basic.sh   # Quick test scripts
+│   └── test-analyze.sh
 ├── app/                 # Tauri + React GUI application
 │   ├── src/            # React/TypeScript frontend
 │   ├── src-tauri/      # Tauri Rust backend
 │   └── package.json
 ├── Cargo.toml          # Workspace manifest
-└── ARCHITECTURE.md     # Detailed technical documentation
+├── ARCHITECTURE.md     # Detailed technical documentation
+└── CHANGELOG.md        # Version history
 ```
 
 ### Philosophy

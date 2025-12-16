@@ -1,14 +1,32 @@
 [package]
 name = "spectra-cli"
 description = "S.P.E.C.T.R.A: Scalable Platform for Enterprise Content Topology & Resource Analytics"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Your Name <you@example.com>"]
 
 [dependencies]
+# Existing (Phase 1)
 jwalk = "0.8"        # The parallel walker (Speed)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"   # The data format
 anyhow = "1.0"       # Error handling
 clap = { version = "4.4", features = ["derive"] } # CLI parsing
 humansize = "2.0"    # Readable units
+
+# Phase 2: Heuristics & Analysis
+regex = "1.10"
+lazy_static = "1.4"
+
+# Phase 2: Semantic (Optional Feature)
+# rust-bert pulls in libtorch (~500MB+). We gate it.
+[dependencies.rust-bert]
+version = "0.21"
+optional = true
+
+[features]
+default = []
+semantic = ["rust-bert"]
+
+[dev-dependencies]
+tempfile = "3.8"  # For tests

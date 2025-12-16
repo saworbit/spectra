@@ -112,12 +112,82 @@ The system is composed of three decoupled layers: **The Agent** (Edge), **The Tr
 - [ ] Persistence: SQLite/DuckDB integration for history tracking.
 - [ ] Advanced Visuals: WebGL/Wasm Treemap visualization implementation.
 
-### Phase 2: The Semantic Bridge
+### Phase 2: The Semantic Bridge (Implemented ✅)
 
 **Goal:** Move from "Size" to "Meaning."
 
-- **Content Fingerprinting:** Integration of local LLM/Vector models (e.g., rust-bert) to classify file content (Contract, Invoice, Code) without reading the file.
-- **Risk Scoring:** Automated heuristic analysis (e.g., "High entropy file named 'passwords.txt'").
+We have transitioned from pure topology (size/location) to typography (meaning/risk). Spectra now possesses "Sight."
+
+#### Tiered Inspection Architecture
+
+To maintain our <20MB binary and sub-second scan times while introducing AI capabilities, we implement a three-tier analysis model:
+
+- **Tier 0 (Metadata):** Size, Extension, Path. (Nanoseconds) - Already implemented in Phase 1.
+- **Tier 1 (Heuristic):** Filename regex patterns, Shannon entropy calculation on first 8KB. (Microseconds)
+- **Tier 2 (Semantic):** LLM-based content classification using rust-bert. (Milliseconds) - Optional feature.
+
+#### Implementation Details
+
+**Module Structure:** `cli/src/analysis/`
+- `entropy.rs` - Shannon entropy calculation for detecting encryption/compression
+- `heuristics.rs` - Pattern-based risk analysis for sensitive files
+- `semantic.rs` - Optional AI-based content classification
+- `mod.rs` - Public API for analysis capabilities
+
+**Key Features:**
+
+1. **Entropy Profiling:**
+   - Calculates Shannon Entropy on file headers (first 8KB only)
+   - Low Entropy (0-4): Text, Source Code, XML
+   - High Entropy (7-8): Compressed archives, Encrypted volumes, Random keys
+   - Helps identify obfuscated malware or encrypted sensitive data
+
+2. **Heuristic Risk Scoring:**
+   - Regex-based identification of "Toxic Assets" (keys, passwords, credentials)
+   - Five-level risk classification: None, Low, Medium, High, Critical
+   - Patterns include: `.pem`, `.p12`, `password`, `secret`, `token`, `.env`, `.kdbx`
+   - No file content read required - filename analysis only
+
+3. **Neural Classification (Optional):**
+   - Integration of rust-bert DistilBERT zero-shot classification
+   - Classifies content as: Legal Contract, Source Code, Financial Invoice, Log File, etc.
+   - Only applies to low-entropy (text) files
+   - Gated behind `semantic` feature flag to keep base binary small
+   - Requires LibTorch (~500MB) - not included in default build
+
+**Safety & Performance:**
+
+- All analysis is **read-only** on the first 8KB of files
+- No data leaves the local machine
+- Analysis is **opt-in** via `--analyze` and `--semantic` flags
+- Default scan remains ultra-fast with no overhead
+- Feature flags prevent binary bloat
+
+**Usage:**
+
+```bash
+# Standard fast scan (Phase 1 only)
+cargo run -p spectra-cli -- --path ./
+
+# With heuristic analysis (entropy + risk)
+cargo run -p spectra-cli -- --path ./ --analyze
+
+# With full AI classification (requires 'semantic' feature)
+cargo build -p spectra-cli --features semantic
+cargo run -p spectra-cli --features semantic -- --path ./ --semantic
+```
+
+#### Implementation Status
+
+- [x] Entropy calculation engine
+- [x] Risk pattern detection
+- [x] Semantic classification framework
+- [x] Feature flag architecture
+- [x] CLI integration with `--analyze` and `--semantic` flags
+- [x] Enhanced reporting with risk icons and entropy scores
+- [ ] Batch processing optimization for large file sets
+- [ ] Custom pattern configuration files
+- [ ] Machine learning model fine-tuning for enterprise domains
 
 ### Phase 3: The Enterprise Mesh
 

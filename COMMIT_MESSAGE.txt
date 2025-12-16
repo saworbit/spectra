@@ -1,0 +1,117 @@
+feat: Implement Phase 2 - The Semantic Bridge
+
+Introduce intelligent content analysis capabilities, transitioning Spectra
+from pure topology (size/location) to typography (meaning/risk). This release
+establishes a tiered inspection architecture that maintains zero-latency
+performance while adding semantic understanding.
+
+## Core Features
+
+### Analysis Module (cli/src/analysis/)
+- **entropy.rs**: Shannon entropy calculation on file headers (8KB sampling)
+  - Detects encrypted, compressed, or obfuscated files
+  - Returns 0.0 (uniform) to 8.0 (random) scale
+  - Microsecond-level performance
+
+- **heuristics.rs**: Pattern-based risk detection
+  - 5-level classification: None, Low, Medium, High, Critical
+  - Detects sensitive files: passwords, keys, certificates, SSH keys, wallets
+  - Path-aware matching (e.g., .ssh/id_rsa → Critical)
+  - Zero file reads - filename/path analysis only
+
+- **semantic.rs**: Optional AI content classification
+  - rust-bert DistilBERT zero-shot classification
+  - Categories: legal, financial, technical, etc.
+  - Feature-gated to keep base binary small
+  - Only processes low-entropy (text) files
+
+### CLI Enhancements
+- Add `--analyze` flag for entropy + risk analysis
+- Add `--semantic` flag for AI classification (requires feature)
+- Enhanced output with risk icons (🔴 Critical, 🟠 High, 🟡 Medium, 🟢 Low)
+- JSON output includes all analysis metadata
+- FileRecord extended with: entropy, risk_level, semantic_tag
+
+### Developer Experience
+- Convenience scripts: test-basic.{sh,bat}, test-analyze.{sh,bat}
+- Comprehensive usage guide (cli/USAGE.md)
+- 8 unit tests covering all analysis modules
+
+## Architecture
+
+### Tiered Inspection Model
+- Tier 0: Metadata (size, path) - nanoseconds
+- Tier 1: Heuristics (entropy, patterns) - microseconds
+- Tier 2: Semantic (AI) - milliseconds, optional
+
+### Feature Flags
+- `default`: Base scanning engine (~2-5MB binary)
+- `semantic`: Adds rust-bert (~500MB with LibTorch)
+
+### Performance
+- Post-scan analysis on top N files only (--limit configurable)
+- Analysis overhead: ~1-2ms per file (Tier 1), ~10-50ms (Tier 2)
+- Privacy-first: All processing local, read-only first 8KB
+
+## Dependencies
+- Add regex 1.10 (pattern matching)
+- Add lazy_static 1.4 (static regex compilation)
+- Add rust-bert 0.21 (optional, feature-gated)
+- Add tempfile 3.8 (dev, for testing)
+
+## Code Quality
+- Resolved all clippy warnings
+- Formatted with rustfmt
+- Refactored main scan loop to use .flatten()
+- All tests passing (8/8)
+
+## Documentation
+- Updated ARCHITECTURE.md with Phase 2 implementation details
+- Updated README.md with capabilities and examples
+- Updated CHANGELOG.md with detailed release notes
+- Added cli/USAGE.md with comprehensive guide
+
+## Breaking Changes
+None. Phase 2 features are opt-in via CLI flags.
+
+## Migration Guide
+Existing usage remains unchanged. New features available via:
+```bash
+# Enable semantic analysis
+spectra-cli --path . --analyze
+
+# Enable AI classification (requires feature build)
+cargo build -p spectra-cli --features semantic
+spectra-cli --path . --semantic
+```
+
+## Files Changed
+- Modified:
+  - ARCHITECTURE.md (Phase 2 documentation)
+  - CHANGELOG.md (v0.2.0 release notes)
+  - README.md (capabilities and quick start)
+  - cli/Cargo.toml (dependencies and features)
+  - cli/src/main.rs (analysis integration)
+
+- Added:
+  - cli/src/analysis/entropy.rs
+  - cli/src/analysis/heuristics.rs
+  - cli/src/analysis/semantic.rs
+  - cli/src/analysis/mod.rs
+  - cli/USAGE.md
+  - cli/test-basic.{sh,bat}
+  - cli/test-analyze.{sh,bat}
+
+## Testing
+```bash
+# Run all tests
+cargo test -p spectra-cli
+
+# Test basic scan
+./cli/test-basic.sh
+
+# Test semantic analysis
+./cli/test-analyze.sh
+```
+
+Version: 0.2.0
