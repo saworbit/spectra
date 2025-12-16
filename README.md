@@ -44,16 +44,16 @@ It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architecte
 - **Local-First:** Agents work perfectly offline; federation is optional.
 
 ### Phase 4: The Lens (Visualization Layer) ✅ (Implemented)
-- **Risk Treemaps:** Interactive hierarchical visualization where color = entropy risk and size = data volume.
-- **Visual Risk Encoding:**
-  - 🟩 Green (0-3.0): Low entropy - Text, code, configs
-  - 🟨 Yellow (3.0-6.0): Medium - Binaries, media
-  - 🟧 Orange (6.0-7.5): High - Compressed data
-  - 🟥 Red (7.5-8.0): Critical - Encryption, high randomness
+- **Enterprise Dashboard:** Real-time statistics visualization for directory scans.
+- **Data Insights:**
+  - 📊 Overview Card: Total files, folders, size, and scan duration
+  - 📈 Top Extensions: Top 5 file types by total size with file counts
+  - 🐳 Heavy Hitters: Top 10 largest files with full path display
 - **Desktop Application:** Native cross-platform GUI built with Tauri v2 + React + TypeScript.
-- **Nivo Integration:** D3-powered treemap visualizations with hover tooltips and click inspection.
-- **Dark-Themed Interface:** Modern UI optimized for data density visualization.
+- **Tauri Bridge:** Strongly-typed interface between React frontend and Rust backend.
+- **Dark-Themed Interface:** Modern enterprise UI with grid-based card layout.
 - **One-Click Launch:** Sophisticated scripts for instant startup on Windows and Unix systems.
+- **Type Safety:** Full TypeScript support with interface contracts for scan results.
 
 ## 🚀 Quick Start
 
@@ -82,7 +82,7 @@ npm install
 npm run tauri dev
 ```
 
-The application will open in a new window with the interactive risk treemap visualization. See [app/README.md](app/README.md) for detailed GUI documentation.
+The application will open in a new window with the enterprise dashboard. Enter a directory path and click "Deep Scan" to visualize file statistics. See [app/README.md](app/README.md) for detailed GUI documentation.
 
 ### Running the CLI Agent (Headless)
 
@@ -161,17 +161,17 @@ Spectra includes several convenience scripts to streamline development and deplo
 ### GUI Application
 
 **`launch-vision.bat`** (Windows) / **`launch-vision.sh`** (Unix/Linux/macOS)
-- **Purpose**: One-click launcher for Spectra Vision GUI (Phase 4 - The Lens)
+- **Purpose**: One-click launcher for Spectra Dashboard GUI (Phase 4 - The Lens)
 - **What it does**:
   - Checks for dependencies (Node.js, Cargo)
   - Navigates to `app/` directory
   - Installs npm dependencies if needed
   - Launches Tauri development server (`npm run tauri dev`)
-- **When to use**: To visualize directory scans with interactive risk treemaps
+- **When to use**: To visualize directory scans with enterprise statistics dashboard
 - **Usage**:
   - Windows: `launch-vision.bat`
   - Unix: `./launch-vision.sh`
-- **Features**: Opens native GUI with entropy-based risk visualization
+- **Features**: Opens native GUI with file statistics, top extensions, and heavy hitters visualization
 
 ### Federation & Server
 
@@ -236,13 +236,12 @@ spectra/
 │   └── Cargo.toml
 ├── app/                        # Phase 4: Tauri + React GUI (The Lens)
 │   ├── src/
-│   │   ├── components/        # React components
-│   │   │   └── RiskTreemap.tsx     # Nivo treemap visualization
-│   │   ├── App.tsx            # Main application
-│   │   └── App.css            # Dark-themed styling
+│   │   ├── types.ts           # TypeScript interfaces for scan results
+│   │   ├── App.tsx            # Enterprise dashboard implementation
+│   │   └── App.css            # Dark-themed enterprise styling
 │   ├── src-tauri/
 │   │   └── src/
-│   │       └── lib.rs         # Uses spectra-core + TreeNode viz
+│   │       └── lib.rs         # Tauri commands using spectra-core
 │   ├── launch-spectra-vision.bat   # Windows launcher
 │   ├── launch-spectra-vision.sh    # Unix launcher
 │   ├── package.json
@@ -290,8 +289,8 @@ Spectra recently underwent a **major refactoring** to establish a clean modular 
 ┌─────────────────┐
 │   app (Tauri)   │ ← GUI application (Phase 4)
 ├─────────────────┤
-│ • get_scan_tree │ ← TreeNode visualization
-│ • scan_directory│ ← Statistics (NEW)
+│ • scan_directory│ ← Statistics dashboard
+│ • React + TS    │ ← Strongly-typed frontend
 └─────────────────┘
 ```
 
