@@ -55,7 +55,8 @@ Will allow traversing historical snapshots to visualize data growth and entropy 
 ### Prerequisites
 ```bash
 # Install Node.js dependencies
-npm install
+# Note: Use --legacy-peer-deps due to React 19 compatibility
+npm install --legacy-peer-deps
 
 # Rust toolchain should be installed via Tauri setup
 ```

@@ -22,8 +22,9 @@ echo ""
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
     echo -e "${BLUE}[1/3] Installing dependencies...${NC}"
+    echo "Note: Using --legacy-peer-deps for React 19 compatibility"
     echo ""
-    npm install
+    npm install --legacy-peer-deps
     echo ""
     echo -e "${GREEN}✓ Dependencies installed successfully${NC}"
     echo ""

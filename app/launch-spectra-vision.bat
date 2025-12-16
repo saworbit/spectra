@@ -14,8 +14,9 @@ echo.
 REM Check if node_modules exists
 if not exist "node_modules\" (
     echo [1/3] Installing dependencies...
+    echo Note: Using --legacy-peer-deps for React 19 compatibility
     echo.
-    call npm install
+    call npm install --legacy-peer-deps
     if errorlevel 1 (
         echo.
         echo ❌ Failed to install dependencies.
