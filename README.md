@@ -130,20 +130,81 @@ cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --enforce
 cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze
 ```
 
-### Convenience Scripts
+## 🔧 Scripts & Tools
 
-**Cross-Platform Launch Scripts:**
-```bash
-# Windows
-launch-vision.bat       # Launch Spectra Vision GUI (Phase 4)
-run-server.bat          # Start the Hub server (Phase 3)
-run-agent.bat           # Run federated agent - dry-run (Phase 3)
-build-release.bat       # Build all release binaries
-test-all.bat            # Run full test suite
+Spectra includes several convenience scripts to streamline development and deployment workflows.
 
-# Unix/Linux/macOS
-./launch-vision.sh      # Launch Spectra Vision GUI (Phase 4)
-```
+### Quality Assurance
+
+**`validate-refactor.bat`** (Windows)
+- **Purpose**: Pre-alpha comprehensive validation suite for modular architecture
+- **What it does**:
+  - Code formatting check (`cargo fmt --check`)
+  - Clippy linting with strict warnings (`-D warnings`)
+  - Builds all crates (core, CLI, server, Tauri app) in release mode
+  - Runs unit tests for each crate independently
+  - Runs integration tests (CLI basic scan, CLI analysis scan)
+  - Full workspace test suite
+- **When to use**: Before committing changes, during refactoring, or after dependency updates
+- **Usage**: `validate-refactor.bat`
+- **Expected output**: Color-coded step-by-step validation with ✓/✗ indicators
+
+### Build & Deployment
+
+**`build-release.bat`** (Windows)
+- **Purpose**: Build production-ready release binaries for all crates
+- **What it does**: Runs `cargo build --release` for spectra-core, spectra-cli, spectra-server, and app
+- **When to use**: When preparing binaries for distribution or benchmarking
+- **Usage**: `build-release.bat`
+- **Output location**: `target/release/`
+
+### GUI Application
+
+**`launch-vision.bat`** (Windows) / **`launch-vision.sh`** (Unix/Linux/macOS)
+- **Purpose**: One-click launcher for Spectra Vision GUI (Phase 4 - The Lens)
+- **What it does**:
+  - Checks for dependencies (Node.js, Cargo)
+  - Navigates to `app/` directory
+  - Installs npm dependencies if needed
+  - Launches Tauri development server (`npm run tauri dev`)
+- **When to use**: To visualize directory scans with interactive risk treemaps
+- **Usage**:
+  - Windows: `launch-vision.bat`
+  - Unix: `./launch-vision.sh`
+- **Features**: Opens native GUI with entropy-based risk visualization
+
+### Federation & Server
+
+**`run-server.bat`** (Windows)
+- **Purpose**: Start the Spectra Server (Phase 3 - Federation Hub)
+- **What it does**: Runs `cargo run -p spectra-server` to start the central control plane
+- **When to use**: When testing federated agent coordination or time-travel analytics
+- **Usage**: `run-server.bat`
+- **Endpoint**: Listens on `http://0.0.0.0:3000`
+- **API endpoints**:
+  - `POST /api/v1/ingest` - Receive agent snapshots
+  - `GET /api/v1/policies` - Distribute governance policies
+
+**`run-agent.bat`** (Windows)
+- **Purpose**: Run federated CLI agent in dry-run mode
+- **What it does**: Executes `cargo run -p spectra-cli -- --path ./ --server http://localhost:3000`
+- **When to use**: Testing agent federation without policy enforcement
+- **Usage**: `run-agent.bat` (ensure server is running first)
+- **Safety**: Dry-run by default (reports governance actions without executing)
+- **For enforcement**: Edit script to add `--enforce` flag (⚠️ CAUTION: Can delete files)
+
+### Script Compatibility
+
+| Script | Windows | Unix/Linux | macOS |
+|--------|---------|------------|-------|
+| validate-refactor.bat | ✅ | ❌ | ❌ |
+| build-release.bat | ✅ | ❌ | ❌ |
+| launch-vision.bat | ✅ | ❌ | ❌ |
+| launch-vision.sh | ❌ | ✅ | ✅ |
+| run-server.bat | ✅ | ❌ | ❌ |
+| run-agent.bat | ✅ | ❌ | ❌ |
+
+**Note**: Unix/Linux/macOS users can run equivalent Cargo commands directly. See individual sections above for command equivalents.
 
 ## 🏗 Architecture
 
@@ -195,8 +256,7 @@ spectra/
 ├── launch-vision.sh            # Launch GUI (Unix)
 ├── run-server.bat              # Start Hub server (Windows)
 ├── run-agent.bat               # Run federated agent (Windows)
-├── build-release.bat           # Build all binaries (Windows)
-└── test-all.bat                # Run test suite (Windows)
+└── build-release.bat           # Build all binaries (Windows)
 ```
 
 ### 🏗️ Modular Architecture (Pre-Alpha)
