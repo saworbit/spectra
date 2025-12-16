@@ -2,6 +2,9 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 
+// Import core scanner
+use spectra_core::{ScanStats, Scanner};
+
 // --- Data Models ---
 
 #[derive(Serialize, Debug, Clone)]
@@ -22,8 +25,8 @@ struct TreeNode {
 
 // Mocking the Phase 2 entropy logic for the GUI example
 fn calculate_mock_entropy(path: &Path) -> f32 {
-    // In production, import spectra_core::analysis::entropy
-    // Here, we simulate entropy based on extension
+    // TODO: In production, use spectra_core for scanning + CLI analysis modules for entropy
+    // For now, simulate entropy based on extension for visualization
     if let Some(ext) = path.extension() {
         match ext.to_string_lossy().as_ref() {
             "zip" | "enc" => 7.8,
@@ -95,6 +98,7 @@ fn scan_directory_recursive(path: &Path, depth: usize, max_depth: usize) -> Opti
 
 // --- Commands ---
 
+// EXISTING COMMAND: TreeNode visualization
 #[tauri::command]
 fn get_scan_tree(path: String) -> Result<TreeNode, String> {
     let root = Path::new(&path);
@@ -113,11 +117,34 @@ fn get_scan_tree(path: String) -> Result<TreeNode, String> {
         .ok_or_else(|| format!("Failed to scan path: {}. Try a subdirectory instead.", path))
 }
 
+// NEW COMMAND: Basic statistics scan using core library
+#[tauri::command]
+fn scan_directory(path: String, limit: usize) -> Result<ScanStats, String> {
+    let root = Path::new(&path);
+
+    // Validate path exists
+    if !root.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+
+    // Validate read permissions
+    if let Err(e) = fs::metadata(root) {
+        return Err(format!("Cannot access path: {}", e));
+    }
+
+    // Use core scanner for statistics
+    let scanner = Scanner::new(root, limit);
+    scanner.scan().map_err(|e| format!("Scan failed: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_scan_tree])
+        .invoke_handler(tauri::generate_handler![
+            get_scan_tree,  // EXISTING: For visualization
+            scan_directory  // NEW: For statistics
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

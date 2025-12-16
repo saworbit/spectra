@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "spectra-core",
     "cli",
     "app/src-tauri",
     "server"

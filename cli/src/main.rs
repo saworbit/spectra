@@ -3,10 +3,13 @@ use clap::Parser;
 use humansize::{format_size, DECIMAL};
 use jwalk::WalkDir;
 use serde::Serialize;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::Instant;
+
+// Import core scanner
+use spectra_core::{
+    ExtensionStat, FileRecord as CoreFileRecord, ScanStats as CoreScanStats, Scanner,
+};
 
 mod analysis;
 use analysis::{analyze_filename_risk, calculate_shannon_entropy, RiskLevel, SemanticEngine};
@@ -48,9 +51,9 @@ struct Args {
     enforce: bool,
 }
 
-// A struct to hold file info, sortable by size (for our Heap)
+// CLI-specific FileRecord WITH analysis fields
 #[derive(Debug, Serialize)]
-struct FileRecord {
+struct AnalyzedFileRecord {
     path: String,
     size_bytes: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,47 +64,44 @@ struct FileRecord {
     semantic_tag: Option<String>,
 }
 
-// Manual Eq and PartialEq implementations that only compare path and size
-// (needed for BinaryHeap, but we ignore the analysis fields)
-impl PartialEq for FileRecord {
-    fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.size_bytes == other.size_bytes
+// Conversion from core FileRecord to analyzed FileRecord
+impl From<CoreFileRecord> for AnalyzedFileRecord {
+    fn from(core: CoreFileRecord) -> Self {
+        Self {
+            path: core.path,
+            size_bytes: core.size_bytes,
+            entropy: None,
+            risk_level: None,
+            semantic_tag: None,
+        }
     }
 }
 
-impl Eq for FileRecord {}
-
-// Implement ordering so the BinaryHeap knows how to sort (by size)
-impl Ord for FileRecord {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // We reverse comparison because we want a MinHeap to keep the "Largest" items
-        // (We pop the smallest of the top X to make room for bigger ones)
-        other.size_bytes.cmp(&self.size_bytes)
-    }
-}
-
-impl PartialOrd for FileRecord {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
+// CLI-specific stats structure WITH analyzed files
 #[derive(Serialize, Debug, Default)]
-struct ExtensionStat {
-    count: u64,
-    size: u64,
-}
-
-#[derive(Serialize, Debug, Default)]
-struct ScanStats {
+struct CliScanStats {
     root_path: String,
     total_files: u64,
     total_folders: u64,
     total_size_bytes: u64,
     scan_duration_ms: u128,
-    // Analytics
     extensions: HashMap<String, ExtensionStat>,
-    top_files: Vec<FileRecord>,
+    top_files: Vec<AnalyzedFileRecord>,
+}
+
+// Conversion from core ScanStats to CLI ScanStats
+impl From<CoreScanStats> for CliScanStats {
+    fn from(core: CoreScanStats) -> Self {
+        Self {
+            root_path: core.root_path,
+            total_files: core.total_files,
+            total_folders: core.total_folders,
+            total_size_bytes: core.total_size_bytes,
+            scan_duration_ms: core.scan_duration_ms,
+            extensions: core.extensions,
+            top_files: core.top_files.into_iter().map(Into::into).collect(),
+        }
+    }
 }
 
 // Helper: Fetch policies from server
@@ -138,7 +138,7 @@ fn fetch_policies(server_url: &str) -> Vec<Policy> {
 }
 
 // Helper: Upload snapshot to server
-fn upload_snapshot(server_url: &str, stats: &ScanStats) {
+fn upload_snapshot(server_url: &str, stats: &CliScanStats) {
     let url = format!("{}/api/v1/ingest", server_url);
     let client = reqwest::blocking::Client::new();
 
@@ -178,8 +178,6 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let root_path = PathBuf::from(&args.path);
 
-    let start_time = Instant::now();
-
     if !args.json {
         println!(
             "🚀 SPECTRA: Profiling topology of '{}'...",
@@ -202,61 +200,32 @@ fn main() -> Result<()> {
         }
     }
 
-    // We use a BinaryHeap to efficiently track the Top N largest files without sorting the whole list
-    let mut top_files_heap = BinaryHeap::with_capacity(args.limit + 1);
-    let mut stats = ScanStats {
-        root_path: root_path.display().to_string(),
-        ..Default::default()
-    };
+    // USE CORE SCANNER for basic scanning (Phase 1)
+    let scanner = Scanner::new(root_path.clone(), args.limit);
+    let core_stats = scanner.scan()?;
 
-    // Parallel Walk
-    for dir_entry in WalkDir::new(&root_path).into_iter().flatten() {
-        if let Ok(meta) = dir_entry.metadata() {
-            if meta.is_file() {
-                let size = meta.len();
-                stats.total_files += 1;
-                stats.total_size_bytes += size;
+    // Convert to CLI stats structure with analysis fields
+    let mut stats = CliScanStats::from(core_stats);
 
-                // 1. EXTENSION ANALYTICS
-                if let Some(ext) = dir_entry.path().extension() {
-                    let ext_string = ext.to_string_lossy().to_string().to_lowercase();
-                    let entry = stats.extensions.entry(ext_string).or_default();
-                    entry.count += 1;
-                    entry.size += size;
-                }
+    // PHASE 3: Apply governance policies (if configured)
+    // Note: We need a separate jwalk pass for governance because we need metadata
+    if !policies.is_empty() {
+        if !args.json {
+            println!("⚙️  Evaluating {} governance policies...", policies.len());
+        }
 
-                // 2. TOP FILES ANALYTICS (The "Heavy Hitters")
-                top_files_heap.push(FileRecord {
-                    path: dir_entry.path().display().to_string(),
-                    size_bytes: size,
-                    entropy: None,
-                    risk_level: None,
-                    semantic_tag: None,
-                });
-
-                // If heap is too big, remove the smallest of the large files
-                if top_files_heap.len() > args.limit {
-                    top_files_heap.pop();
-                }
-
-                // 3. GOVERNANCE CHECK (Phase 3)
-                if !policies.is_empty() {
+        for dir_entry in WalkDir::new(&root_path).into_iter().flatten() {
+            if let Ok(meta) = dir_entry.metadata() {
+                if meta.is_file() {
                     for policy in &policies {
                         if policy.evaluate(&dir_entry.path(), &meta) {
                             policy.execute(&dir_entry.path(), !args.enforce);
                         }
                     }
                 }
-            } else if meta.is_dir() {
-                stats.total_folders += 1;
             }
         }
     }
-
-    // Extract top files from heap and sort them largest first
-    stats.top_files = top_files_heap.into_sorted_vec();
-    // Note: into_sorted_vec returns ascending order, so we reverse for display
-    stats.top_files.reverse();
 
     // POST-SCAN ANALYSIS: The Semantic Bridge (Phase 2)
     if args.analyze || args.semantic {
@@ -302,10 +271,6 @@ fn main() -> Result<()> {
         }
     }
 
-    // Finalize Data
-    let duration = start_time.elapsed();
-    stats.scan_duration_ms = duration.as_millis();
-
     if args.json {
         println!("{}", serde_json::to_string_pretty(&stats)?);
     } else {
@@ -323,7 +288,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn print_human_report(stats: &ScanStats) {
+fn print_human_report(stats: &CliScanStats) {
     println!("------------------------------------------------");
     println!(
         "✅ Scan Complete in {:.2}s",

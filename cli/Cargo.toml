@@ -6,6 +6,9 @@ edition = "2021"
 authors = ["Your Name <you@example.com>"]
 
 [dependencies]
+# Core scanning engine
+spectra-core = { path = "../spectra-core" }
+
 # Existing (Phase 1)
 jwalk = "0.8"        # The parallel walker (Speed)
 serde = { version = "1.0", features = ["derive"] }

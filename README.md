@@ -151,9 +151,14 @@ test-all.bat            # Run full test suite
 
 ```
 spectra/
+├── spectra-core/              # 🆕 Core scanning library (NEW)
+│   ├── src/
+│   │   └── lib.rs            # Scanner, FileRecord, ScanStats
+│   ├── Cargo.toml
+│   └── README.md              # Usage guide
 ├── cli/                        # Headless Rust agent (spectra-cli)
 │   ├── src/
-│   │   ├── main.rs            # High-performance scanning engine
+│   │   ├── main.rs            # Thin client using spectra-core
 │   │   ├── analysis/          # Phase 2: Semantic Bridge
 │   │   │   ├── entropy.rs     # Shannon entropy calculation
 │   │   │   ├── heuristics.rs  # Risk pattern detection
@@ -176,7 +181,7 @@ spectra/
 │   │   └── App.css            # Dark-themed styling
 │   ├── src-tauri/
 │   │   └── src/
-│   │       └── lib.rs         # TreeNode scanning & entropy
+│   │       └── lib.rs         # Uses spectra-core + TreeNode viz
 │   ├── launch-spectra-vision.bat   # Windows launcher
 │   ├── launch-spectra-vision.sh    # Unix launcher
 │   ├── package.json
@@ -185,6 +190,7 @@ spectra/
 ├── ARCHITECTURE.md             # Detailed technical documentation
 ├── PHASE3_GUIDE.md             # Phase 3 quick start guide
 ├── CHANGELOG.md                # Version history
+├── validate-refactor.bat       # 🆕 QA validation suite (NEW)
 ├── launch-vision.bat           # Launch GUI (Windows)
 ├── launch-vision.sh            # Launch GUI (Unix)
 ├── run-server.bat              # Start Hub server (Windows)
@@ -192,6 +198,51 @@ spectra/
 ├── build-release.bat           # Build all binaries (Windows)
 └── test-all.bat                # Run test suite (Windows)
 ```
+
+### 🏗️ Modular Architecture (Pre-Alpha)
+
+Spectra recently underwent a **major refactoring** to establish a clean modular architecture:
+
+```
+┌─────────────────┐
+│ spectra-server  │ ← Federation endpoint (Phase 3)
+└────────┬────────┘
+         │
+         ↓
+┌─────────────────┐
+│  spectra-cli    │ ← Thin client
+├─────────────────┤
+│ • Analysis      │ ← Phase 2 (entropy, risk, semantic)
+│ • Governance    │ ← Phase 3 (policies)
+│ • Federation    │ ← Phase 3 (server comms)
+└────────┬────────┘
+         │ uses
+         ↓
+┌─────────────────┐
+│ spectra-core    │ ← Shared scanning engine ⭐ NEW
+├─────────────────┤
+│ • Scanner       │ ← Phase 1 (jwalk, BinaryHeap)
+│ • FileRecord    │ ← Simple (path, size)
+│ • ScanStats     │ ← Aggregated results
+└────────┬────────┘
+         ↑ uses
+         │
+┌─────────────────┐
+│   app (Tauri)   │ ← GUI application (Phase 4)
+├─────────────────┤
+│ • get_scan_tree │ ← TreeNode visualization
+│ • scan_directory│ ← Statistics (NEW)
+└─────────────────┘
+```
+
+**Key Benefits:**
+- 🔄 Code reuse between CLI and GUI
+- ✅ Independently testable core library
+- 🎯 Clear separation of concerns
+- 🚀 No performance regression
+- 🧩 Extensible for future use cases
+
+**Status:** Pre-Alpha (API unstable)
 
 ### Philosophy
 
