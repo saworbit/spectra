@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM Set UTF-8 encoding for Unicode characters
+chcp 65001 > nul
+
 echo.
 echo ================================================
 echo  S.P.E.C.T.R.A. Modular Refactoring Validation
@@ -164,5 +167,7 @@ echo.
 echo  Pre-Alpha Status: READY FOR TESTING
 echo ================================================
 echo.
+echo Press any key to exit...
+pause > nul
 
 endlocal
