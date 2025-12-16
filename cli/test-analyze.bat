@@ -16,3 +16,4 @@ cargo run -p spectra-cli -- --path "%TARGET_PATH%" --analyze --limit 10
 
 echo.
 echo ===================================
+pause
