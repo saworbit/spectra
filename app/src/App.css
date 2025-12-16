@@ -23,10 +23,48 @@
 
 .container {
   margin: 0;
-  padding-top: 10vh;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
   justify-content: center;
+  align-items: center;
+}
+
+.controls input {
+  flex: 1;
+  max-width: 400px;
+}
+
+.visualization-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 500px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.placeholder {
+  color: #888;
+  font-style: italic;
+  font-size: 1.2em;
+}
+
+.error {
+  background-color: #f44336;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  margin-bottom: 20px;
   text-align: center;
 }
 
@@ -112,5 +150,13 @@ button {
   }
   button:active {
     background-color: #0f0f0f69;
+  }
+
+  .visualization-container {
+    background-color: #1a1a1a;
+  }
+
+  .placeholder {
+    color: #aaa;
   }
 }

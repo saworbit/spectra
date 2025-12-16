@@ -43,10 +43,17 @@ It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architecte
 - **Beacon Protocol:** Agents push snapshots and pull policies via REST API.
 - **Local-First:** Agents work perfectly offline; federation is optional.
 
-### Phase 4: Visual Interface (In Progress)
+### Phase 4: The Lens (Visualization Layer) ✅ (Implemented)
+- **Risk Treemaps:** Interactive hierarchical visualization where color = entropy risk and size = data volume.
+- **Visual Risk Encoding:**
+  - 🟩 Green (0-3.0): Low entropy - Text, code, configs
+  - 🟨 Yellow (3.0-6.0): Medium - Binaries, media
+  - 🟧 Orange (6.0-7.5): High - Compressed data
+  - 🟥 Red (7.5-8.0): Critical - Encryption, high randomness
 - **Desktop Application:** Native cross-platform GUI built with Tauri v2 + React + TypeScript.
-- **Tri-Crate Architecture:** Separation of CLI agent, server control plane, and GUI interface.
-- **Modern Stack:** Vite-powered development with hot module replacement for rapid iteration.
+- **Nivo Integration:** D3-powered treemap visualizations with hover tooltips and click inspection.
+- **Dark-Themed Interface:** Modern UI optimized for data density visualization.
+- **One-Click Launch:** Sophisticated scripts for instant startup on Windows and Unix systems.
 
 ## 🚀 Quick Start
 
@@ -57,15 +64,25 @@ git clone https://github.com/YOUR_USERNAME/spectra.git
 cd spectra
 ```
 
-### Running the GUI Application
+### Running the GUI Application (Phase 4 - The Lens)
 
+**Quick Launch (Recommended):**
+```bash
+# Windows
+launch-vision.bat
+
+# Unix/Linux/macOS
+./launch-vision.sh
+```
+
+**Manual Launch:**
 ```bash
 cd app
 npm install
 npm run tauri dev
 ```
 
-This will launch the Tauri desktop application with the React frontend.
+The application will open in a new window with the interactive risk treemap visualization. See [app/README.md](app/README.md) for detailed GUI documentation.
 
 ### Running the CLI Agent (Headless)
 
@@ -113,13 +130,19 @@ cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --enforce
 cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze
 ```
 
-### Convenience Scripts (Windows)
+### Convenience Scripts
 
+**Cross-Platform Launch Scripts:**
 ```bash
-run-server.bat          # Start the Hub server
-run-agent.bat           # Run federated agent (dry-run)
+# Windows
+launch-vision.bat       # Launch Spectra Vision GUI (Phase 4)
+run-server.bat          # Start the Hub server (Phase 3)
+run-agent.bat           # Run federated agent - dry-run (Phase 3)
 build-release.bat       # Build all release binaries
 test-all.bat            # Run full test suite
+
+# Unix/Linux/macOS
+./launch-vision.sh      # Launch Spectra Vision GUI (Phase 4)
 ```
 
 ## 🏗 Architecture
@@ -145,14 +168,25 @@ spectra/
 │   ├── src/
 │   │   └── main.rs            # Axum API server
 │   └── Cargo.toml
-├── app/                        # Tauri + React GUI application
-│   ├── src/                   # React/TypeScript frontend
-│   ├── src-tauri/             # Tauri Rust backend
-│   └── package.json
+├── app/                        # Phase 4: Tauri + React GUI (The Lens)
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   │   └── RiskTreemap.tsx     # Nivo treemap visualization
+│   │   ├── App.tsx            # Main application
+│   │   └── App.css            # Dark-themed styling
+│   ├── src-tauri/
+│   │   └── src/
+│   │       └── lib.rs         # TreeNode scanning & entropy
+│   ├── launch-spectra-vision.bat   # Windows launcher
+│   ├── launch-spectra-vision.sh    # Unix launcher
+│   ├── package.json
+│   └── README.md              # GUI documentation
 ├── Cargo.toml                  # Workspace manifest
 ├── ARCHITECTURE.md             # Detailed technical documentation
 ├── PHASE3_GUIDE.md             # Phase 3 quick start guide
 ├── CHANGELOG.md                # Version history
+├── launch-vision.bat           # Launch GUI (Windows)
+├── launch-vision.sh            # Launch GUI (Unix)
 ├── run-server.bat              # Start Hub server (Windows)
 ├── run-agent.bat               # Run federated agent (Windows)
 ├── build-release.bat           # Build all binaries (Windows)

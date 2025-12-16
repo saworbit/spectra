@@ -10,12 +10,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned Features
+- **Temporal Navigation**: Time-slider for traversing historical snapshots in GUI
 - **Persistence Layer**: Integration of DuckDB or Rusqlite for queryable local history
 - **SurrealDB Integration**: Full graph database support for topology storage
 - **Policy Management UI**: Web interface for creating and managing governance policies
-- **Advanced Visuals**: WebGL/Wasm Treemap visualization in GUI application
+- **Real Entropy Integration**: Replace mock calculation with full Phase 2 entropy engine in GUI
 - **Agent Authentication**: Secure authentication and authorization for federated agents
-- **Growth Analytics**: Data velocity tracking and trend prediction
+- **Advanced Filtering**: Filter treemap by risk level, file type, or size
+- **Export Capabilities**: Save visualizations as images or data exports
+- **Comparative Views**: Side-by-side comparisons of different directories or time periods
+
+---
+
+## [0.4.0] - 2025-12-16
+
+### "The Lens" - Phase 4 Visualization Layer
+
+**This release brings Spectra to life with an interactive visual interface. The system now has "Eyes" - transforming raw entropy metrics into intuitive risk treemaps where danger is visible at a glance.**
+
+#### Added
+
+**Risk Treemap Visualization:**
+- Interactive hierarchical treemap where color = entropy risk, size = data volume
+- **Visual Risk Encoding:**
+  - 🟩 Green (0-3.0): Low entropy - Text, code, configs
+  - 🟨 Yellow (3.0-6.0): Medium - Binaries, media
+  - 🟧 Orange (6.0-7.5): High - Compressed data
+  - 🟥 Red (7.5-8.0): Critical - Encryption, high randomness
+- Hover tooltips with detailed entropy scores and file sizes
+- Click inspection for drill-down into file/directory details
+- Responsive design with dark-themed interface optimized for data density
+
+**GUI Application Components:**
+- **Frontend** (`app/src/`):
+  - `RiskTreemap.tsx`: Nivo-powered D3 treemap visualization component
+  - `App.tsx`: Main application with scan controls and state management
+  - `App.css`: Dark-themed styling with visualization container
+  - `__tests__/RiskTreemap.test.tsx`: Component test suite
+- **Backend** (`app/src-tauri/src/lib.rs`):
+  - `TreeNode` data structure for hierarchical file system representation
+  - `get_scan_tree`: Tauri command for directory scanning
+  - `calculate_mock_entropy`: Extension-based entropy simulation
+  - Recursive scanning with configurable depth limit (default: 3 levels)
+
+**Launch Scripts:**
+- `launch-vision.bat`: Windows one-click launcher (root level)
+- `launch-vision.sh`: Unix/Linux/macOS one-click launcher (root level)
+- `app/launch-spectra-vision.bat`: Sophisticated Windows launcher with dependency checks
+- `app/launch-spectra-vision.sh`: Sophisticated Unix launcher with color-coded output
+- Auto-detection of missing dependencies (Node.js, Cargo)
+- Progress indicators and user-friendly error messages
+
+**Dependencies:**
+- Frontend: `@nivo/treemap`, `@nivo/core`, `@mui/material`, `@emotion/react`, `@emotion/styled`, `d3-scale-chromatic`, `clsx`
+- No changes to backend Rust dependencies (serde and serde_json already present)
+
+#### Changed
+- GUI application fully functional with Phase 4 features
+- Enhanced project structure with components directory
+- Improved user experience with loading states and error handling
+
+#### Documentation
+- Created comprehensive `app/README.md` with component documentation
+- Updated main `README.md` with Phase 4 quick start and visual encoding guide
+- Added usage instructions and development guidelines
+- Documented future enhancements (temporal navigation, real entropy integration)
+
+#### Technical Details
+- **Framework**: Tauri 2.0 (Rust backend + React 19 frontend)
+- **Build Tool**: Vite 7 with hot module replacement
+- **Visualization**: Nivo 0.84.0 (React-native D3 bindings)
+- **Performance**: Depth-limited scanning (3 levels) for responsive UI
+- **Bundle Size**: ~50MB (includes visualization libraries)
+- **Test Coverage**: 4 component tests for RiskTreemap
 
 ---
 

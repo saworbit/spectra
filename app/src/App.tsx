@@ -1,50 +1,61 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import RiskTreemap from './components/RiskTreemap';
+import './App.css';
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [treeData, setTreeData] = useState(null);
+  const [scanPath, setScanPath] = useState("./"); // Default scan current dir
+  const [isScanning, setIsScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  async function startScan() {
+    try {
+      setIsScanning(true);
+      setError(null);
+      console.log("Scanning...", scanPath);
+      // Call the Rust command defined in lib.rs
+      const result = await invoke("get_scan_tree", { path: scanPath });
+      setTreeData(result as any);
+    } catch (error) {
+      console.error("Scan failed:", error);
+      setError(error as string);
+    } finally {
+      setIsScanning(false);
+    }
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="container">
+      <h1>Spectra Vision</h1>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
+      <div className="controls">
         <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+          type="text"
+          value={scanPath}
+          onChange={(e) => setScanPath(e.target.value)}
+          placeholder="/path/to/scan"
+          disabled={isScanning}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+        <button onClick={startScan} disabled={isScanning}>
+          {isScanning ? "Analyzing..." : "Analyze Topology"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="error">
+          Error: {error}
+        </div>
+      )}
+
+      <div className="visualization-container">
+        {treeData ? (
+          <RiskTreemap data={treeData} />
+        ) : (
+          <p className="placeholder">Select a target to map the dark matter.</p>
+        )}
+      </div>
+    </div>
   );
 }
 
