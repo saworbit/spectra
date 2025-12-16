@@ -42,7 +42,12 @@ fn scan_directory_recursive(path: &Path, depth: usize, max_depth: usize) -> Opti
     }
 
     let metadata = fs::metadata(path).ok()?;
-    let name = path.file_name()?.to_string_lossy().to_string();
+
+    // Handle root directories (e.g., C:\, /, etc.) which don't have a file_name
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.to_string_lossy().to_string());
 
     if metadata.is_file() {
         let entropy = calculate_mock_entropy(path);
@@ -93,8 +98,19 @@ fn scan_directory_recursive(path: &Path, depth: usize, max_depth: usize) -> Opti
 #[tauri::command]
 fn get_scan_tree(path: String) -> Result<TreeNode, String> {
     let root = Path::new(&path);
+
+    // Check if path exists
+    if !root.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+
+    // Check if we have permission to read
+    if let Err(e) = fs::metadata(root) {
+        return Err(format!("Cannot access path: {}", e));
+    }
+
     scan_directory_recursive(root, 0, 3) // Limit depth for demo performance
-        .ok_or_else(|| "Failed to scan path".to_string())
+        .ok_or_else(|| format!("Failed to scan path: {}. Try a subdirectory instead.", path))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

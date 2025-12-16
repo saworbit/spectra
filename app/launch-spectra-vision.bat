@@ -5,10 +5,10 @@ REM Phase 4: The Visualization Layer
 REM ============================================
 
 echo.
-echo ╔═══════════════════════════════════════════╗
-echo ║     Spectra Vision - The Lens             ║
-echo ║     Phase 4: Visualization Layer          ║
-echo ╚═══════════════════════════════════════════╝
+echo =============================================
+echo      Spectra Vision - The Lens
+echo      Phase 4: Visualization Layer
+echo =============================================
 echo.
 
 REM Check if node_modules exists
@@ -45,10 +45,10 @@ echo.
 REM Launch Tauri Dev Server
 echo [3/3] Launching Spectra Vision...
 echo.
-echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo ---------------------------------------------
 echo   The application will open in a new window
 echo   Press Ctrl+C to stop the server
-echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo ---------------------------------------------
 echo.
 
 call npm run tauri dev
