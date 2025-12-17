@@ -27,7 +27,11 @@ function App() {
 
     try {
       // Invoke the Rust command 'scan_directory'
-      const result = await invoke<ScanStats>("scan_directory", { path });
+      // limit: number of top files to return
+      const result = await invoke<ScanStats>("scan_directory", {
+        path,
+        limit: 10
+      });
       setStats(result);
     } catch (e) {
       setError(String(e));
