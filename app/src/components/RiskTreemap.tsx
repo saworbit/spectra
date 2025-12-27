@@ -15,7 +15,7 @@ interface RiskTreemapProps {
 }
 
 const RiskTreemap = ({ data }: RiskTreemapProps) => {
-  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+  const [, setSelectedNode] = useState<TreeNode | null>(null);
 
   return (
     <div style={{ height: '500px', width: '100%', background: '#1a1a1a' }}>

@@ -2,6 +2,12 @@
 name = "spectra-server"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Spectra Contributors"]
+description = "Federation hub and control plane for S.P.E.C.T.R.A."
+repository = "https://github.com/saworbit/spectra"
+keywords = ["federation", "server", "governance", "analytics"]
+categories = ["web-programming::http-server"]
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }

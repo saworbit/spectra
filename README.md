@@ -5,6 +5,8 @@
 [![Rust](https://img.shields.io/badge/built_with-Rust-d05c44.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--alpha-red.svg)]()
+[![Rust CI](https://github.com/saworbit/spectra/workflows/Rust%20CI/badge.svg)](https://github.com/saworbit/spectra/actions/workflows/rust-ci.yml)
+[![Frontend CI](https://github.com/saworbit/spectra/workflows/Frontend%20CI/badge.svg)](https://github.com/saworbit/spectra/actions/workflows/frontend-ci.yml)
 
 ---
 
@@ -318,6 +320,19 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the deep dive.
 We prioritize **Performance** and **Safety**. If it slows down the scan, it doesn't get merged.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for protocols.
+
+## 📄 License
+
+S.P.E.C.T.R.A. is dual-licensed under your choice of:
+
+- **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- **MIT License** ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+This dual licensing provides maximum flexibility for both open-source and commercial use. You may choose whichever license best suits your needs.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you shall be dual licensed as above, without any additional terms or conditions.
+
+See [LICENSE](LICENSE) for more details on the dual licensing model.
 
 ---
 

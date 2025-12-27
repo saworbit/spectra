@@ -2,6 +2,12 @@
 name = "spectra-core"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Spectra Contributors"]
+description = "Core scanning library for the S.P.E.C.T.R.A. platform"
+repository = "https://github.com/saworbit/spectra"
+keywords = ["filesystem", "scanner", "analytics", "enterprise"]
+categories = ["filesystem", "command-line-utilities"]
 
 [dependencies]
 jwalk = "0.8"

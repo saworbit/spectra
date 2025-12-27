@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// Copyright (c) 2024-2025 Spectra Contributors
+//
+// This file is dual-licensed under the MIT and Apache 2.0 licenses.
+// See LICENSE-MIT and LICENSE-APACHE in the repository root for full license texts.
+
 use serde::Serialize;
 use std::fs;
 use std::path::Path;

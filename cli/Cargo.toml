@@ -3,7 +3,11 @@ name = "spectra-cli"
 description = "S.P.E.C.T.R.A: Scalable Platform for Enterprise Content Topology & Resource Analytics"
 version = "0.2.0"
 edition = "2021"
-authors = ["Your Name <you@example.com>"]
+authors = ["Spectra Contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/saworbit/spectra"
+keywords = ["filesystem", "scanner", "governance", "analytics", "enterprise"]
+categories = ["filesystem", "command-line-utilities"]
 
 [dependencies]
 # Core scanning engine

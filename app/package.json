@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "license": "(MIT OR Apache-2.0)",
+  "author": "Spectra Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saworbit/spectra.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

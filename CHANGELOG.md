@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - CI/CD & Quality Improvements
+
+**Continuous Integration:**
+- **GitHub Actions Workflows**: Automated CI pipelines for all pushes and pull requests
+  - `rust-ci.yml`: Multi-platform Rust testing (Ubuntu, Windows, macOS)
+    - Code formatting check (`cargo fmt`)
+    - Clippy linting with warnings as errors
+    - Compilation check (`cargo check`)
+    - Test suite execution on all platforms
+  - `frontend-ci.yml`: Frontend build and type checking
+    - TypeScript type checking with strict mode
+    - Production build validation
+    - Node.js 20 LTS support
+- **Quality Gates**: All checks must pass before merge
+- **Rust Caching**: Swatinem/rust-cache for faster build times
+- **Dependency Management**: Legacy peer deps support for React 19 compatibility
+
+**Code Quality Fixes:**
+- Fixed unused variable warning in `RiskTreemap.tsx` (replaced with array destructuring)
+- Excluded test files from TypeScript compilation to avoid missing test dependency errors
+- Updated workflows to skip optional `semantic` feature (rust-bert) which requires libtorch
+- All local CI checks passing before push to GitHub
+
 ### Added - Modular Refactoring (Pre-Alpha Status)
 
 #### 🏗️ **BREAKING CHANGE**: New Modular Architecture
