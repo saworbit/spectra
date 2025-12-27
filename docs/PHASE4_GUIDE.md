@@ -279,10 +279,10 @@ spectra-cli --path ./suspicious-dir --analyze --json > report.json
 
 ## 📚 Related Documentation
 
-- **[app/README.md](app/README.md)**: Detailed GUI component documentation
+- **[app/README.md](../app/README.md)**: Detailed GUI component documentation
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: System design and rationale
 - **[PHASE3_GUIDE.md](PHASE3_GUIDE.md)**: Federation and governance guide
-- **[README.md](README.md)**: Main project overview
+- **[README.md](../README.md)**: Main project overview
 
 ---
 

@@ -248,9 +248,14 @@ spectra/
 │   ├── launch-spectra-vision.sh    # Unix launcher
 │   ├── package.json
 │   └── README.md              # GUI documentation
+├── docs/                        # Documentation
+│   ├── ARCHITECTURE.md         # Detailed technical documentation
+│   ├── PHASE3_GUIDE.md         # Phase 3 quick start guide
+│   ├── PHASE4_GUIDE.md         # Phase 4 visualization guide
+│   ├── CONTRIBUTING.md         # Contribution guidelines
+│   ├── DEVELOPMENT.md          # Developer setup guide
+│   └── FAQ.md                  # Frequently asked questions
 ├── Cargo.toml                  # Workspace manifest
-├── ARCHITECTURE.md             # Detailed technical documentation
-├── PHASE3_GUIDE.md             # Phase 3 quick start guide
 ├── CHANGELOG.md                # Version history
 ├── validate-refactor.bat       # 🆕 QA validation suite (NEW)
 ├── launch-vision.bat           # Launch GUI (Windows)
@@ -313,13 +318,13 @@ Spectra adheres to the **"Trojan Horse"** philosophy:
 - **The Pivot:** Use the installed base to index content and map lineage.
 - **The Platform:** Federate metadata to a central governance plane.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the deep dive.
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the deep dive.
 
 ## 🤝 Contributing
 
 We prioritize **Performance** and **Safety**. If it slows down the scan, it doesn't get merged.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for protocols.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for protocols.
 
 ## 📄 License
 

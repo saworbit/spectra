@@ -337,7 +337,7 @@ No timeline yet. v1.0 will be released when:
 
 ### What features are planned?
 
-See [CHANGELOG.md](CHANGELOG.md) for "Planned Features" section. Highlights:
+See [CHANGELOG.md](../CHANGELOG.md) for "Planned Features" section. Highlights:
 - SurrealDB integration for graph queries
 - Web dashboard for server management
 - Real-time scanning with file system watchers
@@ -374,7 +374,7 @@ Yes! Open a GitHub Issue with:
 
 ## Still Have Questions?
 
-- **Documentation**: Check [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md)
+- **Documentation**: Check [README.md](../README.md), [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Discussions**: GitHub Discussions for general questions
 - **Issues**: GitHub Issues for bugs and feature requests
 - **Community**: Join our Discord (link coming soon)

@@ -266,6 +266,6 @@ spectra-cli --path /massive/dir --analyze --limit 50  # Fast heuristics only
 
 ## See Also
 
-- [ARCHITECTURE.md](../ARCHITECTURE.md) - Technical architecture details
+- [ARCHITECTURE.md](../docs/ARCHITECTURE.md) - Technical architecture details
 - [CHANGELOG.md](../CHANGELOG.md) - Version history and changes
 - [README.md](../README.md) - Project overview
