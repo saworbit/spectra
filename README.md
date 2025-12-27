@@ -1,4 +1,4 @@
-# S.P.E.C.T.R.A.
+# Spectra
 
 > **Scalable Platform for Enterprise Content Topology & Resource Analytics**
 
@@ -16,7 +16,7 @@
 
 While **Orbit** handles the movement of data and **SPACE** handles the environment, **Spectra** provides the vision. It is a high-performance data cartography agent designed to map the "Dark Matter" of enterprise storage.
 
-It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architected to evolve into a distributed semantic governance brain (like Alation).
+It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architected to evolve into a distributed semantic governance brain for enterprise data management.
 
 ## ⚡ Capabilities
 
@@ -323,7 +323,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for protocols.
 
 ## 📄 License
 
-S.P.E.C.T.R.A. is dual-licensed under your choice of:
+Spectra is dual-licensed under your choice of:
 
 - **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
 - **MIT License** ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)

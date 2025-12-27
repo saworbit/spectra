@@ -1,6 +1,6 @@
 [package]
 name = "spectra-cli"
-description = "S.P.E.C.T.R.A: Scalable Platform for Enterprise Content Topology & Resource Analytics"
+description = "Spectra: Scalable Platform for Enterprise Content Topology & Resource Analytics"
 version = "0.2.0"
 edition = "2021"
 authors = ["Spectra Contributors"]

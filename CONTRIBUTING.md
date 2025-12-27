@@ -1,4 +1,4 @@
-# Contributing to S.P.E.C.T.R.A.
+# Contributing to Spectra
 
 Thank you for your interest in contributing to Spectra! This document provides guidelines and protocols for contributing to the project.
 
@@ -347,7 +347,7 @@ Be respectful and constructive in all interactions. We're building something use
 
 ## License
 
-S.P.E.C.T.R.A. is dual-licensed under Apache-2.0 and MIT.
+Spectra is dual-licensed under Apache-2.0 and MIT.
 
 ### Your Contributions
 

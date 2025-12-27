@@ -370,20 +370,6 @@ Yes! Open a GitHub Issue with:
 **Choose WizTree if**: You only need size visualization on Windows
 **Choose Spectra if**: You need governance, risk analysis, or cross-platform support
 
-### Spectra vs Alation
-
-| Feature | Spectra | Alation |
-|---------|---------|---------|
-| Data Catalog | Planned | ✅ |
-| File System Scanning | ✅ | Limited |
-| Local-first | ✅ | ❌ |
-| Open Source | ✅ | ❌ |
-| Price | Free | $$$ |
-| Lineage Tracking | Planned | ✅ |
-
-**Choose Alation if**: You need enterprise data catalog for databases
-**Choose Spectra if**: You need file system governance and local-first architecture
-
 ---
 
 ## Still Have Questions?
