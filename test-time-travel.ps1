@@ -4,7 +4,7 @@
 $SERVER_URL = "http://localhost:3000/api/v1"
 $AGENT_ID = "agent_sim_01"
 
-Write-Host "🧪 Spectra Time-Travel Simulation" -ForegroundColor Blue
+Write-Host "Spectra Time-Travel Simulation" -ForegroundColor Blue
 Write-Host "==================================" -ForegroundColor Blue
 Write-Host ""
 Write-Host "This script will:"
@@ -14,14 +14,15 @@ Write-Host "  3. Verify history and velocity endpoints"
 Write-Host ""
 
 # Check if server is running
-Write-Host "📡 Checking server availability..." -ForegroundColor Yellow
+Write-Host "Checking server availability..." -ForegroundColor Yellow
 try {
     $null = Invoke-RestMethod -Uri "$SERVER_URL/policies" -Method Get -ErrorAction Stop
-    Write-Host "✅ Server is running" -ForegroundColor Green
+    Write-Host "Server is running" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Error: Server is not running at $SERVER_URL" -ForegroundColor Red
+    Write-Host "Error: Server is not running at $SERVER_URL" -ForegroundColor Red
     Write-Host "Please start the server first:"
-    Write-Host "  cd server; cargo run"
+    Write-Host "  cd server"
+    Write-Host "  cargo run"
     exit 1
 }
 Write-Host ""
@@ -43,8 +44,9 @@ function Send-Snapshot {
         [int]$mp4_count
     )
 
-    $date = (Get-Date -UnixTimeSeconds $timestamp).ToString("yyyy-MM-dd HH:mm:ss")
-    Write-Host "📤 Sending snapshot @ $date" -ForegroundColor Blue
+    $dateFormat = "yyyy-MM-dd HH:mm:ss"
+    $date = (Get-Date -UnixTimeSeconds $timestamp).ToString($dateFormat)
+    Write-Host "Sending snapshot at $date" -ForegroundColor Blue
 
     $body = @{
         agent_id = $AGENT_ID
@@ -63,14 +65,14 @@ function Send-Snapshot {
 
     try {
         $null = Invoke-RestMethod -Uri "$SERVER_URL/ingest" -Method Post -Body $body -ContentType "application/json"
-        Write-Host "   ✅ Snapshot stored ($total_size bytes, $file_count files)" -ForegroundColor Green
+        Write-Host "   Snapshot stored: $total_size bytes, $file_count files" -ForegroundColor Green
     } catch {
-        Write-Host "   ❌ Failed to store snapshot: $_" -ForegroundColor Red
+        Write-Host "   Failed to store snapshot: $_" -ForegroundColor Red
         exit 1
     }
 }
 
-Write-Host "📊 Generating Time-Series Data..." -ForegroundColor Yellow
+Write-Host "Generating Time-Series Data..." -ForegroundColor Yellow
 Write-Host ""
 
 # T0: 24 hours ago - Baseline (1GB total)
@@ -79,19 +81,19 @@ Send-Snapshot -timestamp $BASE_TIME -total_size 1000000000 -file_count 5000 `
     -jpg_size 500000000 -jpg_count 500 `
     -mp4_size 100000000 -mp4_count 10
 
-# T1: 18 hours ago - Logs start growing (+100MB logs)
+# T1: 18 hours ago - Logs start growing
 Send-Snapshot -timestamp ($BASE_TIME + 21600) -total_size 1100000000 -file_count 5200 `
     -log_size 300000000 -log_count 150 `
     -jpg_size 500000000 -jpg_count 500 `
     -mp4_size 100000000 -mp4_count 10
 
-# T2: 12 hours ago - Video spike! (+500MB mp4)
+# T2: 12 hours ago - Video spike
 Send-Snapshot -timestamp ($BASE_TIME + 43200) -total_size 1600000000 -file_count 5250 `
     -log_size 300000000 -log_count 150 `
     -jpg_size 500000000 -jpg_count 500 `
     -mp4_size 600000000 -mp4_count 20
 
-# T3: 6 hours ago - Log explosion (+300MB logs)
+# T3: 6 hours ago - Log explosion
 Send-Snapshot -timestamp ($BASE_TIME + 64800) -total_size 1900000000 -file_count 5500 `
     -log_size 600000000 -log_count 300 `
     -jpg_size 500000000 -jpg_count 500 `
@@ -104,62 +106,62 @@ Send-Snapshot -timestamp ([int](Get-Date -UFormat %s)) -total_size 2000000000 -f
     -mp4_size 600000000 -mp4_count 20
 
 Write-Host ""
-Write-Host "🔍 Verifying History Endpoint..." -ForegroundColor Yellow
+Write-Host "Verifying History Endpoint..." -ForegroundColor Yellow
 
 try {
     $history = Invoke-RestMethod -Uri "$SERVER_URL/history/$AGENT_ID" -Method Get
     $snapshotCount = $history.Count
 
     if ($snapshotCount -ge 5) {
-        Write-Host "✅ History verified: $snapshotCount snapshots available" -ForegroundColor Green
+        Write-Host "History verified: $snapshotCount snapshots available" -ForegroundColor Green
     } else {
-        Write-Host "❌ History verification failed: Expected 5+, got $snapshotCount" -ForegroundColor Red
+        Write-Host "History verification failed: Expected 5+, got $snapshotCount" -ForegroundColor Red
         exit 1
     }
 } catch {
-    Write-Host "❌ Failed to verify history: $_" -ForegroundColor Red
+    Write-Host "Failed to verify history: $_" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
-Write-Host "⚡ Calculating Velocity (T0 to T4)..." -ForegroundColor Yellow
+Write-Host "Calculating Velocity (T0 to T4)..." -ForegroundColor Yellow
 
 try {
     $currentTime = [int](Get-Date -UFormat %s)
     $velocity = Invoke-RestMethod -Uri "$SERVER_URL/velocity/${AGENT_ID}?start=$BASE_TIME&end=$currentTime" -Method Get
 
-    Write-Host "✅ Velocity calculation successful" -ForegroundColor Green
+    Write-Host "Velocity calculation successful" -ForegroundColor Green
     Write-Host ""
-    Write-Host "📈 Velocity Report Summary:" -ForegroundColor Blue
+    Write-Host "Velocity Report Summary:" -ForegroundColor Blue
     Write-Host ($velocity | ConvertTo-Json -Depth 10)
     Write-Host ""
 
-    # Verify expected growth (should be ~1GB = 1,000,000,000 bytes)
+    # Verify expected growth (should be approximately 1GB)
     $growth = $velocity.growth_bytes
     if ($growth -gt 900000000 -and $growth -lt 1100000000) {
-        Write-Host "✅ Growth verification passed: $growth bytes (~1GB as expected)" -ForegroundColor Green
+        Write-Host "Growth verification passed: $growth bytes (approximately 1GB as expected)" -ForegroundColor Green
     } else {
-        Write-Host "⚠️  Growth anomaly detected: $growth bytes (expected ~1GB)" -ForegroundColor Yellow
+        Write-Host "Growth anomaly detected: $growth bytes (expected approximately 1GB)" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "❌ Velocity calculation failed: $_" -ForegroundColor Red
+    Write-Host "Velocity calculation failed: $_" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
 Write-Host "================================" -ForegroundColor Green
-Write-Host "✅ Time-Travel Simulation Complete!" -ForegroundColor Green
+Write-Host "Time-Travel Simulation Complete!" -ForegroundColor Green
 Write-Host "================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Open the Spectra GUI (npm run dev in app/)"
-Write-Host "  2. Navigate to '⏳ Time-Travel Analytics' tab"
+Write-Host "  1. Open the Spectra GUI: cd app, then npm run dev"
+Write-Host "  2. Navigate to the Time-Travel Analytics tab"
 Write-Host "  3. Use agent ID: $AGENT_ID"
 Write-Host "  4. Explore the timeline and velocity metrics"
 Write-Host ""
 Write-Host "Key insights from the simulation:"
-Write-Host "  - Total growth: +1GB over 24 hours"
-Write-Host "  - Velocity: ~11.5 KB/s average"
-Write-Host "  - Top contributor: .log files (+500MB)"
-Write-Host "  - Spike detected: .mp4 files (+500MB at T2)"
+Write-Host "  - Total growth: 1GB over 24 hours"
+Write-Host "  - Velocity: approximately 11.5 KB per second average"
+Write-Host "  - Top contributor: log files grew by 500MB"
+Write-Host "  - Spike detected: mp4 files grew by 500MB in second period"
 Write-Host ""
