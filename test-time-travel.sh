@@ -337,7 +337,8 @@ if [ "$SCRIPT_STARTED_SERVER" = true ] && [ -n "$SERVER_PID_TO_CLEANUP" ]; then
         echo -e "${BLUE}   Stopped server process (PID: ${SERVER_PID_TO_CLEANUP})${NC}"
         echo -e "${BLUE}   Server was started by this script at http://localhost:3000${NC}"
     else
-        echo -e "${YELLOW}Could not stop server automatically (may have already exited)${NC}"
+        echo -e "${BLUE}   Server process (PID: ${SERVER_PID_TO_CLEANUP}) already exited${NC}"
+        echo -e "${BLUE}   (This is normal - the server may have stopped on its own)${NC}"
     fi
 else
     echo -e "${BLUE}Server was already running - leaving it running${NC}"

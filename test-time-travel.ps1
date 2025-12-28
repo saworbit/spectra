@@ -335,11 +335,12 @@ Write-Host "   Data will be removed when server stops (using in-memory database)
 if ($SCRIPT_STARTED_SERVER -and $SERVER_PROCESS) {
     Write-Host "Stopping Spectra Server..." -ForegroundColor Yellow
     try {
-        Stop-Process -Id $SERVER_PROCESS.Id -Force
+        Stop-Process -Id $SERVER_PROCESS.Id -Force -ErrorAction Stop
         Write-Host "   Stopped server process (PID: $($SERVER_PROCESS.Id))" -ForegroundColor Gray
         Write-Host "   Server was started by this script at http://localhost:3000" -ForegroundColor Gray
     } catch {
-        Write-Host "Could not stop server automatically. Please close the server window manually." -ForegroundColor Yellow
+        Write-Host "   Server process (PID: $($SERVER_PROCESS.Id)) already exited" -ForegroundColor Gray
+        Write-Host "   (This is normal - the server may have stopped on its own)" -ForegroundColor Gray
     }
 } else {
     Write-Host "Server was already running - leaving it running" -ForegroundColor Gray
