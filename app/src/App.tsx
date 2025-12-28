@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import { ScanStats, VelocityReport } from "./types";
@@ -54,7 +54,7 @@ function App() {
     }
   }
 
-  async function handleRangeSelect(startTime: number, endTime: number) {
+  const handleRangeSelect = useCallback(async (startTime: number, endTime: number) => {
     setVelocityLoading(true);
     setVelocityReport(null);
 
@@ -66,7 +66,7 @@ function App() {
     } finally {
       setVelocityLoading(false);
     }
-  }
+  }, [agentId]);
 
   return (
     <main className="container">
