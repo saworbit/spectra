@@ -54,27 +54,35 @@ if ! nc -z localhost 3000 2>/dev/null && ! timeout 1 bash -c 'cat < /dev/null > 
     SERVER_PID_TO_CLEANUP=$SERVER_PID
     SCRIPT_STARTED_SERVER=true
 
-    # Wait for server to start (max 30 seconds)
-    echo -e "${YELLOW}Waiting for server to start (up to 30 seconds)...${NC}"
-    MAX_ATTEMPTS=30
+    # Wait for server to start (max 60 seconds)
+    echo -e "${YELLOW}Waiting for server to start (up to 60 seconds)...${NC}"
+    echo -e "${BLUE}This may take a while on first run (Rust compilation + startup)...${NC}"
+    MAX_ATTEMPTS=60
     ATTEMPT=0
     SERVER_READY=false
 
     while [ $ATTEMPT -lt $MAX_ATTEMPTS ] && [ "$SERVER_READY" = false ]; do
         sleep 1
         ATTEMPT=$((ATTEMPT + 1))
-        if curl -s -f "${SERVER_URL}/policies" > /dev/null 2>&1; then
+        if curl -s -f --max-time 5 "${SERVER_URL}/policies" > /dev/null 2>&1; then
             SERVER_READY=true
+            echo ""
+            echo -e "${BLUE}Server responded after ${ATTEMPT} seconds${NC}"
         else
-            echo -n "."
+            if [ $((ATTEMPT % 10)) -eq 0 ]; then
+                echo -n " [${ATTEMPT} s]"
+            else
+                echo -n "."
+            fi
         fi
     done
     echo ""
 
     if [ "$SERVER_READY" = false ]; then
-        echo -e "${RED}Error: Server did not start within 30 seconds${NC}"
+        echo -e "${RED}Error: Server did not start within 60 seconds${NC}"
         echo -e "${RED}Server log: /tmp/spectra-server.log${NC}"
         tail -n 20 /tmp/spectra-server.log
+        echo -e "${YELLOW}Note: First run may require more time for Rust compilation${NC}"
         kill $SERVER_PID 2>/dev/null
         exit 1
     fi

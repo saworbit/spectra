@@ -61,9 +61,10 @@ if (-not $portListening) {
     $SERVER_PROCESS = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd server; cargo run" -WindowStyle Normal -PassThru
     $SCRIPT_STARTED_SERVER = $true
 
-    # Wait for server to start (max 30 seconds)
-    Write-Host "Waiting for server to start (up to 30 seconds)..." -ForegroundColor Yellow
-    $maxAttempts = 30
+    # Wait for server to start (max 60 seconds)
+    Write-Host "Waiting for server to start (up to 60 seconds)..." -ForegroundColor Yellow
+    Write-Host "This may take a while on first run (Rust compilation + startup)..." -ForegroundColor Gray
+    $maxAttempts = 60
     $attempt = 0
     $serverReady = $false
 
@@ -71,17 +72,25 @@ if (-not $portListening) {
         Start-Sleep -Seconds 1
         $attempt++
         try {
-            $null = Invoke-RestMethod -Uri "$SERVER_URL/policies" -Method Get -ErrorAction Stop -TimeoutSec 2
+            # Increase timeout and add retry logic
+            $response = Invoke-RestMethod -Uri "$SERVER_URL/policies" -Method Get -ErrorAction Stop -TimeoutSec 5
             $serverReady = $true
+            Write-Host ""
+            Write-Host "Server responded after $attempt seconds" -ForegroundColor Gray
         } catch {
-            Write-Host "." -NoNewline
+            if ($attempt % 10 -eq 0) {
+                Write-Host " [$attempt s]" -NoNewline -ForegroundColor Gray
+            } else {
+                Write-Host "." -NoNewline
+            }
         }
     }
     Write-Host ""
 
     if (-not $serverReady) {
-        Write-Host "Error: Server did not start within 30 seconds" -ForegroundColor Red
+        Write-Host "Error: Server did not start within 60 seconds" -ForegroundColor Red
         Write-Host "Please check the server window for errors" -ForegroundColor Red
+        Write-Host "Note: First run may require more time for Rust compilation" -ForegroundColor Yellow
         exit 1
     }
 
