@@ -3,6 +3,8 @@
 
 $SERVER_URL = "http://localhost:3000/api/v1"
 $AGENT_ID = "agent_sim_01"
+$SCRIPT_STARTED_SERVER = $false
+$SERVER_PROCESS = $null
 
 Write-Host "Spectra Time-Travel Simulation" -ForegroundColor Blue
 Write-Host "==================================" -ForegroundColor Blue
@@ -56,7 +58,8 @@ if (-not $portListening) {
 
     # Start the server in a new window
     Write-Host "Starting Spectra Server in a new window..." -ForegroundColor Yellow
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd server; cargo run" -WindowStyle Normal
+    $SERVER_PROCESS = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd server; cargo run" -WindowStyle Normal -PassThru
+    $SCRIPT_STARTED_SERVER = $true
 
     # Wait for server to start (max 30 seconds)
     Write-Host "Waiting for server to start (up to 30 seconds)..." -ForegroundColor Yellow
@@ -236,4 +239,57 @@ Write-Host "  - Total growth: 1GB over 24 hours"
 Write-Host "  - Velocity: approximately 11.5 KB per second average"
 Write-Host "  - Top contributor: log files grew by 500MB"
 Write-Host "  - Spike detected: mp4 files grew by 500MB in second period"
+Write-Host ""
+Write-Host ""
+Write-Host "================================" -ForegroundColor Cyan
+Write-Host "Demo Paused - Explore the GUI" -ForegroundColor Cyan
+Write-Host "================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "The simulation is complete and the server is ready." -ForegroundColor Yellow
+Write-Host "You can now explore the Time-Travel Analytics in the GUI:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  1. Open a new terminal and run: cd app && npm run dev"
+Write-Host "  2. Navigate to the Time-Travel Analytics tab"
+Write-Host "  3. Enter agent ID: $AGENT_ID"
+Write-Host "  4. Use the timeline sliders to explore the data"
+Write-Host ""
+Write-Host "Press ENTER when you're done exploring to clean up and exit..." -ForegroundColor Green
+$null = Read-Host
+
+Write-Host ""
+Write-Host "Cleaning up..." -ForegroundColor Yellow
+
+# Clean up test data
+Write-Host "Deleting test agent data..." -ForegroundColor Yellow
+try {
+    # Delete all snapshots for the test agent
+    # Note: SurrealDB in-memory mode will lose data when server stops anyway
+    # But we'll try to clean up explicitly for good measure
+    $deleteQuery = "DELETE snapshots WHERE agent_id = '$AGENT_ID'"
+    # If there was a delete endpoint, we'd use it here
+    # For now, data will be cleaned when server stops (in-memory mode)
+    Write-Host "Test data will be removed when server stops (using in-memory database)" -ForegroundColor Gray
+} catch {
+    Write-Host "Note: Could not explicitly delete data, but in-memory database will be cleared on server stop" -ForegroundColor Gray
+}
+
+# Stop the server if we started it
+if ($SCRIPT_STARTED_SERVER -and $SERVER_PROCESS) {
+    Write-Host "Stopping Spectra Server (PID: $($SERVER_PROCESS.Id))..." -ForegroundColor Yellow
+    try {
+        Stop-Process -Id $SERVER_PROCESS.Id -Force
+        Write-Host "Server stopped successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "Could not stop server automatically. Please close the server window manually." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Server was already running - leaving it running" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "================================" -ForegroundColor Green
+Write-Host "Cleanup Complete!" -ForegroundColor Green
+Write-Host "================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Thank you for trying Spectra Time-Travel Analytics!" -ForegroundColor Cyan
 Write-Host ""

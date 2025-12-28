@@ -5,6 +5,8 @@
 
 SERVER_URL="http://localhost:3000/api/v1"
 AGENT_ID="agent_sim_01"
+SCRIPT_STARTED_SERVER=false
+SERVER_PID_TO_CLEANUP=""
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -49,6 +51,8 @@ if ! nc -z localhost 3000 2>/dev/null && ! timeout 1 bash -c 'cat < /dev/null > 
     echo -e "${YELLOW}Starting Spectra Server in background...${NC}"
     (cd server && cargo run > /tmp/spectra-server.log 2>&1) &
     SERVER_PID=$!
+    SERVER_PID_TO_CLEANUP=$SERVER_PID
+    SCRIPT_STARTED_SERVER=true
 
     # Wait for server to start (max 30 seconds)
     echo -e "${YELLOW}Waiting for server to start (up to 30 seconds)...${NC}"
@@ -231,8 +235,58 @@ echo "  3. Use agent ID: ${AGENT_ID}"
 echo "  4. Explore the timeline and velocity metrics"
 echo ""
 echo "Key insights from the simulation:"
-echo "  • Total growth: +1GB over 24 hours"
-echo "  • Velocity: ~11.5 KB/s average"
-echo "  • Top contributor: .log files (+500MB)"
-echo "  • Spike detected: .mp4 files (+500MB at T2)"
+echo "  - Total growth: 1GB over 24 hours"
+echo "  - Velocity: approximately 11.5 KB per second average"
+echo "  - Top contributor: log files grew by 500MB"
+echo "  - Spike detected: mp4 files grew by 500MB in second period"
+echo ""
+echo ""
+echo -e "${BLUE}================================${NC}"
+echo -e "${BLUE}Demo Paused - Explore the GUI${NC}"
+echo -e "${BLUE}================================${NC}"
+echo ""
+echo -e "${YELLOW}The simulation is complete and the server is ready.${NC}"
+echo -e "${YELLOW}You can now explore the Time-Travel Analytics in the GUI:${NC}"
+echo ""
+echo "  1. Open a new terminal and run: cd app && npm run dev"
+echo "  2. Navigate to the Time-Travel Analytics tab"
+echo "  3. Enter agent ID: ${AGENT_ID}"
+echo "  4. Use the timeline sliders to explore the data"
+echo ""
+echo -e "${GREEN}Press ENTER when you're done exploring to clean up and exit...${NC}"
+read -r
+
+echo ""
+echo -e "${YELLOW}Cleaning up...${NC}"
+
+# Clean up test data
+echo -e "${YELLOW}Deleting test agent data...${NC}"
+# Note: SurrealDB in-memory mode will lose data when server stops anyway
+# But we'll document this for clarity
+echo -e "${BLUE}Test data will be removed when server stops (using in-memory database)${NC}"
+
+# Stop the server if we started it
+if [ "$SCRIPT_STARTED_SERVER" = true ] && [ -n "$SERVER_PID_TO_CLEANUP" ]; then
+    echo -e "${YELLOW}Stopping Spectra Server (PID: ${SERVER_PID_TO_CLEANUP})...${NC}"
+    if kill "$SERVER_PID_TO_CLEANUP" 2>/dev/null; then
+        echo -e "${GREEN}Server stopped successfully${NC}"
+    else
+        echo -e "${YELLOW}Could not stop server automatically (may have already exited)${NC}"
+    fi
+else
+    echo -e "${BLUE}Server was already running - leaving it running${NC}"
+fi
+
+# Clean up log file
+if [ -f "/tmp/spectra-server.log" ] && [ "$SCRIPT_STARTED_SERVER" = true ]; then
+    rm -f /tmp/spectra-server.log
+    echo -e "${BLUE}Removed server log file${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}================================${NC}"
+echo -e "${GREEN}Cleanup Complete!${NC}"
+echo -e "${GREEN}================================${NC}"
+echo ""
+echo -e "${BLUE}Thank you for trying Spectra Time-Travel Analytics!${NC}"
 echo ""
