@@ -23,14 +23,71 @@ echo "  3. Verify history and velocity endpoints"
 echo ""
 
 # Check if server is running
-echo -e "${YELLOW}📡 Checking server availability...${NC}"
-if ! curl -s -f "${SERVER_URL}/policies" > /dev/null 2>&1; then
-    echo -e "${RED}❌ Error: Server is not running at ${SERVER_URL}${NC}"
-    echo "Please start the server first:"
-    echo "  cd server && cargo run"
-    exit 1
+echo -e "${YELLOW}Checking server availability...${NC}"
+
+# Check if port 3000 is listening
+if ! nc -z localhost 3000 2>/dev/null && ! timeout 1 bash -c 'cat < /dev/null > /dev/tcp/localhost/3000' 2>/dev/null; then
+    echo -e "${RED}Port 3000 is not listening${NC}"
+    echo ""
+    echo -e "${YELLOW}The Spectra Server is not running. Starting it now...${NC}"
+
+    # Check if we're in the right directory
+    if [ ! -f "./server/Cargo.toml" ]; then
+        echo -e "${RED}Error: Cannot find server directory${NC}"
+        echo -e "${RED}Please run this script from the Spectra root directory${NC}"
+        exit 1
+    fi
+
+    # Check if cargo is available
+    if ! command -v cargo &> /dev/null; then
+        echo -e "${RED}Error: Cargo is not installed or not in PATH${NC}"
+        echo -e "${RED}Please install Rust: https://rustup.rs/${NC}"
+        exit 1
+    fi
+
+    # Start the server in background
+    echo -e "${YELLOW}Starting Spectra Server in background...${NC}"
+    (cd server && cargo run > /tmp/spectra-server.log 2>&1) &
+    SERVER_PID=$!
+
+    # Wait for server to start (max 30 seconds)
+    echo -e "${YELLOW}Waiting for server to start (up to 30 seconds)...${NC}"
+    MAX_ATTEMPTS=30
+    ATTEMPT=0
+    SERVER_READY=false
+
+    while [ $ATTEMPT -lt $MAX_ATTEMPTS ] && [ "$SERVER_READY" = false ]; do
+        sleep 1
+        ATTEMPT=$((ATTEMPT + 1))
+        if curl -s -f "${SERVER_URL}/policies" > /dev/null 2>&1; then
+            SERVER_READY=true
+        else
+            echo -n "."
+        fi
+    done
+    echo ""
+
+    if [ "$SERVER_READY" = false ]; then
+        echo -e "${RED}Error: Server did not start within 30 seconds${NC}"
+        echo -e "${RED}Server log: /tmp/spectra-server.log${NC}"
+        tail -n 20 /tmp/spectra-server.log
+        kill $SERVER_PID 2>/dev/null
+        exit 1
+    fi
+
+    echo -e "${GREEN}Server is now running (PID: $SERVER_PID)${NC}"
+    echo "Note: Server will continue running in background. To stop it, run: kill $SERVER_PID"
+else
+    # Port is listening, verify it's actually the Spectra server
+    if curl -s -f "${SERVER_URL}/policies" > /dev/null 2>&1; then
+        echo -e "${GREEN}Server is running and responding${NC}"
+    else
+        echo -e "${YELLOW}Warning: Port 3000 is in use but not responding to Spectra API${NC}"
+        echo -e "${RED}Please ensure the Spectra Server is running:${NC}"
+        echo "  cd server && cargo run"
+        exit 1
+    fi
 fi
-echo -e "${GREEN}✅ Server is running${NC}"
 echo ""
 
 # Base timestamp (24 hours ago)

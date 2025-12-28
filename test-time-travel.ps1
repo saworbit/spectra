@@ -15,15 +15,87 @@ Write-Host ""
 
 # Check if server is running
 Write-Host "Checking server availability..." -ForegroundColor Yellow
+
+# First, check if port 3000 is listening
+$portListening = $false
 try {
-    $null = Invoke-RestMethod -Uri "$SERVER_URL/policies" -Method Get -ErrorAction Stop
-    Write-Host "Server is running" -ForegroundColor Green
+    $tcpConnection = Test-NetConnection -ComputerName localhost -Port 3000 -InformationLevel Quiet -WarningAction SilentlyContinue
+    $portListening = $tcpConnection
 } catch {
-    Write-Host "Error: Server is not running at $SERVER_URL" -ForegroundColor Red
-    Write-Host "Please start the server first:"
-    Write-Host "  cd server"
-    Write-Host "  cargo run"
-    exit 1
+    # Test-NetConnection might not be available on all systems, fallback to direct check
+    try {
+        $tcpClient = New-Object System.Net.Sockets.TcpClient
+        $tcpClient.Connect("localhost", 3000)
+        $tcpClient.Close()
+        $portListening = $true
+    } catch {
+        $portListening = $false
+    }
+}
+
+if (-not $portListening) {
+    Write-Host "Port 3000 is not listening" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "The Spectra Server is not running. Starting it now..." -ForegroundColor Yellow
+
+    # Check if we're in the right directory
+    if (-not (Test-Path ".\server\Cargo.toml")) {
+        Write-Host "Error: Cannot find server directory" -ForegroundColor Red
+        Write-Host "Please run this script from the Spectra root directory" -ForegroundColor Red
+        exit 1
+    }
+
+    # Check if cargo is available
+    try {
+        $null = Get-Command cargo -ErrorAction Stop
+    } catch {
+        Write-Host "Error: Cargo is not installed or not in PATH" -ForegroundColor Red
+        Write-Host "Please install Rust: https://rustup.rs/" -ForegroundColor Red
+        exit 1
+    }
+
+    # Start the server in a new window
+    Write-Host "Starting Spectra Server in a new window..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd server; cargo run" -WindowStyle Normal
+
+    # Wait for server to start (max 30 seconds)
+    Write-Host "Waiting for server to start (up to 30 seconds)..." -ForegroundColor Yellow
+    $maxAttempts = 30
+    $attempt = 0
+    $serverReady = $false
+
+    while ($attempt -lt $maxAttempts -and -not $serverReady) {
+        Start-Sleep -Seconds 1
+        $attempt++
+        try {
+            $null = Invoke-RestMethod -Uri "$SERVER_URL/policies" -Method Get -ErrorAction Stop -TimeoutSec 2
+            $serverReady = $true
+        } catch {
+            Write-Host "." -NoNewline
+        }
+    }
+    Write-Host ""
+
+    if (-not $serverReady) {
+        Write-Host "Error: Server did not start within 30 seconds" -ForegroundColor Red
+        Write-Host "Please check the server window for errors" -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Server is now running" -ForegroundColor Green
+} else {
+    # Port is listening, verify it's actually the Spectra server
+    try {
+        $null = Invoke-RestMethod -Uri "$SERVER_URL/policies" -Method Get -ErrorAction Stop -TimeoutSec 5
+        Write-Host "Server is running and responding" -ForegroundColor Green
+    } catch {
+        Write-Host "Warning: Port 3000 is in use but not responding to Spectra API" -ForegroundColor Yellow
+        Write-Host "Error: $_" -ForegroundColor Red
+        Write-Host "Please ensure the Spectra Server is running:" -ForegroundColor Yellow
+        Write-Host "  cd server" -ForegroundColor Yellow
+        Write-Host "  cargo run" -ForegroundColor Yellow
+        exit 1
+    }
 }
 Write-Host ""
 
