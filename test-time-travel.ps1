@@ -122,7 +122,7 @@ try {
 }
 
 Write-Host ""
-Write-Host "⚡ Calculating Velocity (T0 → T4)..." -ForegroundColor Yellow
+Write-Host "⚡ Calculating Velocity (T0 to T4)..." -ForegroundColor Yellow
 
 try {
     $currentTime = [int](Get-Date -UFormat %s)
