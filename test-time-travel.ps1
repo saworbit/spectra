@@ -21,7 +21,7 @@ try {
 } catch {
     Write-Host "❌ Error: Server is not running at $SERVER_URL" -ForegroundColor Red
     Write-Host "Please start the server first:"
-    Write-Host "  cd server && cargo run"
+    Write-Host "  cd server; cargo run"
     exit 1
 }
 Write-Host ""
@@ -158,8 +158,8 @@ Write-Host "  3. Use agent ID: $AGENT_ID"
 Write-Host "  4. Explore the timeline and velocity metrics"
 Write-Host ""
 Write-Host "Key insights from the simulation:"
-Write-Host "  • Total growth: +1GB over 24 hours"
-Write-Host "  • Velocity: ~11.5 KB/s average"
-Write-Host "  • Top contributor: .log files (+500MB)"
-Write-Host "  • Spike detected: .mp4 files (+500MB at T2)"
+Write-Host "  - Total growth: +1GB over 24 hours"
+Write-Host "  - Velocity: ~11.5 KB/s average"
+Write-Host "  - Top contributor: .log files (+500MB)"
+Write-Host "  - Spike detected: .mp4 files (+500MB at T2)"
 Write-Host ""
