@@ -284,15 +284,19 @@ if (-not (Test-Path ".\app\package.json")) {
     Write-Host "Opening browser..." -ForegroundColor Gray
 
     # Try port 1420 first (Tauri), then 5173 (standalone Vite)
+    # Pre-populate agent ID and auto-switch to Time-Travel tab
+    $url1420 = "http://localhost:1420/?agentId=$AGENT_ID"
+    $url5173 = "http://localhost:5173/?agentId=$AGENT_ID"
+
     try {
-        Start-Process "http://localhost:1420"
+        Start-Process $url1420
     } catch {
         try {
-            Start-Process "http://localhost:5173"
+            Start-Process $url5173
         } catch {
             Write-Host "Could not auto-open browser. Please manually navigate to:" -ForegroundColor Yellow
-            Write-Host "  http://localhost:1420 (Tauri)" -ForegroundColor Yellow
-            Write-Host "  http://localhost:5173 (Vite)" -ForegroundColor Yellow
+            Write-Host "  $url1420" -ForegroundColor Yellow
+            Write-Host "  $url5173" -ForegroundColor Yellow
         }
     }
 
@@ -301,13 +305,14 @@ if (-not (Test-Path ".\app\package.json")) {
     Write-Host "Ready to Explore!" -ForegroundColor Green
     Write-Host "================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Browser should now be open at http://localhost:1420" -ForegroundColor Yellow
+    Write-Host "Browser should now be open with Time-Travel Analytics loaded!" -ForegroundColor Yellow
+    Write-Host "Agent ID pre-filled: $AGENT_ID" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Instructions:" -ForegroundColor Cyan
-    Write-Host "  1. Click the 'Time-Travel Analytics' tab"
-    Write-Host "  2. Enter agent ID: $AGENT_ID"
-    Write-Host "  3. Use the timeline sliders to explore the data"
-    Write-Host "  4. View velocity metrics and growth attribution"
+    Write-Host "What you'll see:" -ForegroundColor Cyan
+    Write-Host "  - Time-Travel Analytics tab (auto-selected)"
+    Write-Host "  - Agent ID: $AGENT_ID (pre-filled)"
+    Write-Host "  - Interactive timeline with 5 snapshots over 24 hours"
+    Write-Host "  - Velocity metrics showing ~1GB growth"
     Write-Host ""
     Write-Host "Press ENTER when you're done exploring to clean up and exit..." -ForegroundColor Green
     $null = Read-Host

@@ -19,8 +19,12 @@ const formatBytes = (bytes: number, decimals = 2) => {
 type AppMode = "scan" | "timetravel";
 
 function App() {
-  // Tab Management
-  const [mode, setMode] = useState<AppMode>("scan");
+  // Read URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlAgentId = urlParams.get('agentId');
+
+  // Tab Management - auto-switch to time-travel if agentId in URL
+  const [mode, setMode] = useState<AppMode>(urlAgentId ? "timetravel" : "scan");
 
   // Local Scan State
   const [path, setPath] = useState("");
@@ -29,7 +33,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   // Time-Travel State
-  const [agentId, setAgentId] = useState("agent_01");
+  const [agentId, setAgentId] = useState(urlAgentId || "agent_01");
   const [velocityReport, setVelocityReport] = useState<VelocityReport | null>(null);
   const [velocityLoading, setVelocityLoading] = useState(false);
 

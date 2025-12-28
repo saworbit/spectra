@@ -280,13 +280,17 @@ else
         echo -e "${BLUE}Opening browser...${NC}"
 
         # Try port 1420 first (Tauri), then 5173 (standalone Vite)
+        # Pre-populate agent ID and auto-switch to Time-Travel tab
+        URL_1420="http://localhost:1420/?agentId=${AGENT_ID}"
+        URL_5173="http://localhost:5173/?agentId=${AGENT_ID}"
+
         # Use xdg-open on Linux, open on macOS
         if command -v xdg-open &> /dev/null; then
-            xdg-open "http://localhost:1420" 2>/dev/null || xdg-open "http://localhost:5173" 2>/dev/null || echo -e "${YELLOW}Could not auto-open browser. Please navigate to: http://localhost:1420 or http://localhost:5173${NC}"
+            xdg-open "$URL_1420" 2>/dev/null || xdg-open "$URL_5173" 2>/dev/null || echo -e "${YELLOW}Could not auto-open browser. Please navigate to: ${URL_1420} or ${URL_5173}${NC}"
         elif command -v open &> /dev/null; then
-            open "http://localhost:1420" 2>/dev/null || open "http://localhost:5173" 2>/dev/null || echo -e "${YELLOW}Could not auto-open browser. Please navigate to: http://localhost:1420 or http://localhost:5173${NC}"
+            open "$URL_1420" 2>/dev/null || open "$URL_5173" 2>/dev/null || echo -e "${YELLOW}Could not auto-open browser. Please navigate to: ${URL_1420} or ${URL_5173}${NC}"
         else
-            echo -e "${YELLOW}Browser auto-open not available. Please navigate to: http://localhost:1420 or http://localhost:5173${NC}"
+            echo -e "${YELLOW}Browser auto-open not available. Please navigate to: ${URL_1420} or ${URL_5173}${NC}"
         fi
 
         echo ""
@@ -294,13 +298,14 @@ else
         echo -e "${GREEN}Ready to Explore!${NC}"
         echo -e "${GREEN}================================${NC}"
         echo ""
-        echo -e "${YELLOW}Browser should now be open at http://localhost:1420${NC}"
+        echo -e "${YELLOW}Browser should now be open with Time-Travel Analytics loaded!${NC}"
+        echo -e "${GREEN}Agent ID pre-filled: ${AGENT_ID}${NC}"
         echo ""
-        echo -e "${BLUE}Instructions:${NC}"
-        echo "  1. Click the 'Time-Travel Analytics' tab"
-        echo "  2. Enter agent ID: ${AGENT_ID}"
-        echo "  3. Use the timeline sliders to explore the data"
-        echo "  4. View velocity metrics and growth attribution"
+        echo -e "${BLUE}What you'll see:${NC}"
+        echo "  - Time-Travel Analytics tab (auto-selected)"
+        echo "  - Agent ID: ${AGENT_ID} (pre-filled)"
+        echo "  - Interactive timeline with 5 snapshots over 24 hours"
+        echo "  - Velocity metrics showing ~1GB growth"
         echo ""
         echo -e "${GREEN}Press ENTER when you're done exploring to clean up and exit...${NC}"
         read -r
