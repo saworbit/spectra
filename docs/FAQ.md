@@ -178,13 +178,14 @@ Spectra uses a Hub & Spoke model:
 
 ### What database does Spectra use?
 
-Currently, Spectra server is designed to use [SurrealDB](https://surrealdb.com/):
+Spectra server uses [SurrealDB](https://surrealdb.com/) for time-series storage:
 - Multi-model database (document, graph, key-value)
 - Built-in time-travel queries
-- Rust-native client
-- **Status**: Integration in progress
+- Rust-native client with zero-cost FFI
+- **Status**: ✅ Fully integrated (Phase 3.5)
+- In-memory mode for development, RocksDB for production
 
-For local storage, Spectra may add DuckDB or SQLite for queryable history.
+For local storage, future versions may add DuckDB or SQLite for offline velocity queries.
 
 ### Is there a web UI?
 
@@ -353,6 +354,111 @@ Yes! Open a GitHub Issue with:
 - Proposed implementation (if you have ideas)
 - Whether you're willing to contribute code
 
+## Time-Travel Analytics (Phase 3.5)
+
+### What is Time-Travel Analytics?
+
+Time-Travel Analytics is Spectra's time-series intelligence feature that tracks filesystem changes over time. Instead of just "what exists now?", you can ask:
+- "How fast is data growing?"
+- "What caused the spike last Tuesday?"
+- "Which file types are accumulating fastest?"
+
+### Does this store my actual files?
+
+**No.** Only metadata is stored:
+- Total size (bytes)
+- File count
+- Top extension statistics (extension, size, count)
+- Timestamps
+
+Your file content is never transmitted or stored. Privacy is preserved.
+
+### How much storage does the history database use?
+
+Each snapshot is approximately **2KB** of metadata. Examples:
+- **Hourly snapshots for 1 year**: ~17.5MB per agent
+- **Daily snapshots for 5 years**: ~3.6MB per agent
+- **100 agents, daily snapshots, 5 years**: ~365MB total
+
+Storage requirements are minimal.
+
+### Can I see which specific files were deleted?
+
+Not in the current version (v0.5.0). Time-Travel Analytics tracks **aggregate changes** (e.g., "MP4 files decreased by 2GB") but not individual file additions/deletions.
+
+File-level diffing is planned for Phase 5 but requires significantly more storage and bandwidth.
+
+### Why SurrealDB instead of PostgreSQL/MySQL?
+
+SurrealDB was chosen for:
+- **Time-series optimization**: Native support for temporal queries
+- **Embedded deployment**: Runs in-process (single binary) or distributed
+- **Schema flexibility**: Handles evolving metadata without migrations
+- **Rust-native**: Zero-cost FFI, no serialization overhead
+- **Graph capabilities**: Future roadmap includes relationship queries
+
+### How do I test Time-Travel Analytics?
+
+Run the simulation script to generate test data:
+
+**Windows PowerShell:**
+```powershell
+.\test-time-travel.ps1
+```
+
+**Linux/macOS:**
+```bash
+chmod +x test-time-travel.sh
+./test-time-travel.sh
+```
+
+This creates 5 snapshots spanning 24 hours with realistic growth patterns.
+
+### What happens if the server is down during a scan?
+
+The CLI agent will:
+1. Log the connection failure
+2. Continue scanning locally
+3. Display results as normal
+
+**Future enhancement**: Local buffering and retry logic for automatic upload when the server comes back online.
+
+### Can I export velocity reports?
+
+Not yet. Currently, velocity reports are only available via:
+- REST API (`GET /api/v1/velocity/:agent_id`)
+- GUI visualization (Time-Travel Analytics tab)
+
+CSV/PDF export is planned for Phase 4 enhancements.
+
+### How accurate is the velocity calculation?
+
+Velocity is calculated using **exact snapshot data**:
+- Growth bytes = `Snapshot_End.total_size - Snapshot_Start.total_size`
+- Velocity = `Growth_bytes / Duration_seconds`
+
+Accuracy depends on:
+- **Snapshot frequency**: More snapshots = better trend resolution
+- **Timing**: Snapshots should be taken at consistent intervals
+- **Agent reliability**: Ensure agents complete scans successfully
+
+### Can I compare velocity across multiple machines?
+
+Yes! Each agent has a unique `agent_id`. The GUI allows you to:
+1. Switch between different agent IDs
+2. View velocity for each agent independently
+
+**Planned feature**: Multi-agent comparison dashboard showing side-by-side velocity metrics.
+
+### Does Time-Travel Analytics work offline?
+
+Partially:
+- **Agent scanning**: Works completely offline
+- **Snapshot storage**: Requires server connection for persistence
+- **Velocity calculation**: Requires server connection (server-side computation)
+
+**Future enhancement**: Local SQLite storage for offline velocity queries.
+
 ## Comparison with Other Tools
 
 ### Spectra vs WizTree
@@ -362,13 +468,14 @@ Yes! Open a GitHub Issue with:
 | Scan Speed | Fast (parallel) | Very Fast (MFT) |
 | Semantic Analysis | ✅ | ❌ |
 | Risk Detection | ✅ | ❌ |
+| Time-Travel Analytics | ✅ | ❌ |
 | Federation | ✅ | ❌ |
 | Governance | ✅ | ❌ |
 | Cross-platform | ✅ | Windows only |
 | GUI | ✅ (Tauri) | ✅ (Native) |
 
 **Choose WizTree if**: You only need size visualization on Windows
-**Choose Spectra if**: You need governance, risk analysis, or cross-platform support
+**Choose Spectra if**: You need governance, risk analysis, time-series analytics, or cross-platform support
 
 ---
 
@@ -379,4 +486,4 @@ Yes! Open a GitHub Issue with:
 - **Issues**: GitHub Issues for bugs and feature requests
 - **Community**: Join our Discord (link coming soon)
 
-*This FAQ is updated regularly. Last updated: 2025-12-27*
+*This FAQ is updated regularly. Last updated: 2025-12-28*

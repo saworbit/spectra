@@ -39,7 +39,13 @@ It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architecte
 ### Phase 3: The Enterprise Mesh ✅ (Implemented)
 - **Federation:** Hub & Spoke architecture for distributed agent coordination.
 - **Spectra Server:** Central control plane (Axum + SurrealDB) for telemetry aggregation.
-- **Time-Travel Analytics:** Historical snapshots to track data growth and velocity over time.
+- **⏳ Time-Travel Analytics (Phase 3.5):** 🆕 **NEW!**
+  - Historical snapshot storage with time-series database
+  - Velocity calculation: "How fast is data growing?"
+  - Extension attribution: "What caused the spike last Tuesday?"
+  - Interactive timeline scrubber in GUI
+  - Bytes/second growth metrics with delta analysis
+  - Zero file content storage (metadata-only, privacy-preserving)
 - **Active Governance:** Policy-based file management (Report, Delete, Archive actions).
 - **Safety-First:** Dry-run mode by default; requires explicit `--enforce` flag for destructive actions.
 - **Beacon Protocol:** Agents push snapshots and pull policies via REST API.
@@ -47,10 +53,12 @@ It starts as a hyper-fast storage profiler (like WizTree/ncdu) but is architecte
 
 ### Phase 4: The Lens (Visualization Layer) ✅ (Implemented)
 - **Enterprise Dashboard:** Real-time statistics visualization for directory scans.
+- **Dual-Mode Interface:** 🆕 **Tab system for Local Scan + Time-Travel Analytics**
 - **Data Insights:**
   - 📊 Overview Card: Total files, folders, size, and scan duration
   - 📈 Top Extensions: Top 5 file types by total size with file counts
   - 🐳 Heavy Hitters: Top 10 largest files with full path display
+  - ⏳ **Time-Travel Tab:** Interactive timeline slider, velocity metrics, and growth attribution
 - **Desktop Application:** Native cross-platform GUI built with Tauri v2 + React + TypeScript.
 - **Tauri Bridge:** Strongly-typed interface between React frontend and Rust backend.
 - **Dark-Themed Interface:** Modern enterprise UI with grid-based card layout.
@@ -132,6 +140,39 @@ cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --enforce
 cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze
 ```
 
+### Time-Travel Analytics Demo (Phase 3.5) 🆕
+
+```bash
+# 1. Start the Spectra Server (required)
+cd server
+cargo run
+
+# 2. Run the simulation script to generate test data
+# Windows PowerShell:
+.\test-time-travel.ps1
+
+# Linux/macOS:
+chmod +x test-time-travel.sh
+./test-time-travel.sh
+
+# 3. Launch the GUI and navigate to the "⏳ Time-Travel Analytics" tab
+cd app
+npm run dev
+
+# 4. Explore the interactive timeline!
+# - Agent ID: agent_sim_01
+# - Use sliders to select time ranges
+# - View velocity metrics and growth attribution
+```
+
+The simulation script creates 5 snapshots spanning 24 hours with realistic growth patterns:
+- Baseline: 1GB total
+- Log file accumulation: +500MB
+- Video spike: +500MB
+- Total velocity: ~11.5 KB/s average
+
+See [docs/TIME_TRAVEL_ANALYTICS.md](docs/TIME_TRAVEL_ANALYTICS.md) for the complete guide.
+
 ## 🔧 Scripts & Tools
 
 Spectra includes several convenience scripts to streamline development and deployment workflows.
@@ -185,6 +226,8 @@ Spectra includes several convenience scripts to streamline development and deplo
 - **Endpoint**: Listens on `http://0.0.0.0:3000`
 - **API endpoints**:
   - `POST /api/v1/ingest` - Receive agent snapshots
+  - `GET /api/v1/history/:agent_id` - Get available timestamps 🆕
+  - `GET /api/v1/velocity/:agent_id` - Calculate data velocity 🆕
   - `GET /api/v1/policies` - Distribute governance policies
 
 **`run-agent.bat`** (Windows)
@@ -194,6 +237,28 @@ Spectra includes several convenience scripts to streamline development and deplo
 - **Usage**: `run-agent.bat` (ensure server is running first)
 - **Safety**: Dry-run by default (reports governance actions without executing)
 - **For enforcement**: Edit script to add `--enforce` flag (⚠️ CAUTION: Can delete files)
+
+### Time-Travel Analytics Testing 🆕
+
+**`test-time-travel.ps1`** (Windows PowerShell)
+- **Purpose**: Simulate time-series data for Time-Travel Analytics testing
+- **What it does**:
+  - Validates server connectivity
+  - Injects 5 snapshots spanning 24 hours with realistic growth patterns
+  - Verifies history and velocity endpoints
+  - Provides detailed output with growth metrics
+- **When to use**: Testing the Time-Travel Analytics feature without waiting for real data
+- **Usage**: `.\test-time-travel.ps1`
+- **Requirements**: Spectra Server must be running on `http://localhost:3000`
+- **Output**: Creates agent `agent_sim_01` with 1GB growth over 24 hours
+
+**`test-time-travel.sh`** (Linux/macOS Bash)
+- **Purpose**: Same as PowerShell version but for Unix-like systems
+- **What it does**: Identical functionality to `.ps1` script
+- **When to use**: Testing Time-Travel Analytics on Linux/macOS
+- **Usage**: `chmod +x test-time-travel.sh && ./test-time-travel.sh`
+- **Requirements**: `curl` and Spectra Server running
+- **Output**: Comprehensive test report with velocity calculations
 
 ### Script Compatibility
 
@@ -205,6 +270,8 @@ Spectra includes several convenience scripts to streamline development and deplo
 | launch-vision.sh | ❌ | ✅ | ✅ |
 | run-server.bat | ✅ | ❌ | ❌ |
 | run-agent.bat | ✅ | ❌ | ❌ |
+| test-time-travel.ps1 | ✅ | ❌ | ❌ |
+| test-time-travel.sh | ❌ | ✅ | ✅ |
 
 **Note**: Unix/Linux/macOS users can run equivalent Cargo commands directly. See individual sections above for command equivalents.
 
@@ -248,21 +315,24 @@ spectra/
 │   ├── launch-spectra-vision.sh    # Unix launcher
 │   ├── package.json
 │   └── README.md              # GUI documentation
-├── docs/                        # Documentation
-│   ├── ARCHITECTURE.md         # Detailed technical documentation
-│   ├── PHASE3_GUIDE.md         # Phase 3 quick start guide
-│   ├── PHASE4_GUIDE.md         # Phase 4 visualization guide
-│   ├── CONTRIBUTING.md         # Contribution guidelines
-│   ├── DEVELOPMENT.md          # Developer setup guide
-│   └── FAQ.md                  # Frequently asked questions
-├── Cargo.toml                  # Workspace manifest
-├── CHANGELOG.md                # Version history
-├── validate-refactor.bat       # 🆕 QA validation suite (NEW)
-├── launch-vision.bat           # Launch GUI (Windows)
-├── launch-vision.sh            # Launch GUI (Unix)
-├── run-server.bat              # Start Hub server (Windows)
-├── run-agent.bat               # Run federated agent (Windows)
-└── build-release.bat           # Build all binaries (Windows)
+├── docs/                            # Documentation
+│   ├── ARCHITECTURE.md             # Detailed technical documentation
+│   ├── PHASE3_GUIDE.md             # Phase 3 quick start guide
+│   ├── PHASE4_GUIDE.md             # Phase 4 visualization guide
+│   ├── TIME_TRAVEL_ANALYTICS.md    # 🆕 Time-Travel Analytics guide (NEW)
+│   ├── CONTRIBUTING.md             # Contribution guidelines
+│   ├── DEVELOPMENT.md              # Developer setup guide
+│   └── FAQ.md                      # Frequently asked questions
+├── Cargo.toml                      # Workspace manifest
+├── CHANGELOG.md                    # Version history
+├── validate-refactor.bat           # QA validation suite
+├── launch-vision.bat               # Launch GUI (Windows)
+├── launch-vision.sh                # Launch GUI (Unix)
+├── run-server.bat                  # Start Hub server (Windows)
+├── run-agent.bat                   # Run federated agent (Windows)
+├── build-release.bat               # Build all binaries (Windows)
+├── test-time-travel.ps1            # 🆕 Time-Travel test script (Windows, NEW)
+└── test-time-travel.sh             # 🆕 Time-Travel test script (Unix, NEW)
 ```
 
 ### 🏗️ Modular Architecture (Pre-Alpha)
