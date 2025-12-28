@@ -251,19 +251,60 @@ Write-Host "  - Spike detected: mp4 files grew by 500MB in second period"
 Write-Host ""
 Write-Host ""
 Write-Host "================================" -ForegroundColor Cyan
-Write-Host "Demo Paused - Explore the GUI" -ForegroundColor Cyan
+Write-Host "Launching GUI..." -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "The simulation is complete and the server is ready." -ForegroundColor Yellow
-Write-Host "You can now explore the Time-Travel Analytics in the GUI:" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  1. Open a new terminal and run: cd app && npm run dev"
-Write-Host "  2. Navigate to the Time-Travel Analytics tab"
-Write-Host "  3. Enter agent ID: $AGENT_ID"
-Write-Host "  4. Use the timeline sliders to explore the data"
-Write-Host ""
-Write-Host "Press ENTER when you're done exploring to clean up and exit..." -ForegroundColor Green
-$null = Read-Host
+
+# Check if npm is available
+try {
+    $null = Get-Command npm -ErrorAction Stop
+} catch {
+    Write-Host "Warning: npm not found. Please install Node.js to run the GUI" -ForegroundColor Yellow
+    Write-Host "You can manually start the GUI with: cd app && npm run dev" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Press ENTER to clean up and exit..." -ForegroundColor Green
+    $null = Read-Host
+    # Skip to cleanup
+}
+
+# Check if app directory exists
+if (-not (Test-Path ".\app\package.json")) {
+    Write-Host "Warning: Cannot find app directory" -ForegroundColor Yellow
+    Write-Host "Press ENTER to clean up and exit..." -ForegroundColor Green
+    $null = Read-Host
+} else {
+    # Launch the GUI in a new window
+    Write-Host "Starting Spectra Vision GUI in a new window..." -ForegroundColor Yellow
+    $GUI_PROCESS = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd app; npm run dev" -WindowStyle Normal -PassThru
+
+    Write-Host "GUI is starting (this may take a moment for npm to start Vite)..." -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "================================" -ForegroundColor Green
+    Write-Host "Ready to Explore!" -ForegroundColor Green
+    Write-Host "================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "The GUI should open automatically in your browser." -ForegroundColor Yellow
+    Write-Host "If not, navigate to: http://localhost:5173" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Instructions:" -ForegroundColor Cyan
+    Write-Host "  1. Click the 'Time-Travel Analytics' tab"
+    Write-Host "  2. Enter agent ID: $AGENT_ID"
+    Write-Host "  3. Use the timeline sliders to explore the data"
+    Write-Host "  4. View velocity metrics and growth attribution"
+    Write-Host ""
+    Write-Host "Press ENTER when you're done exploring to clean up and exit..." -ForegroundColor Green
+    $null = Read-Host
+
+    # Clean up GUI process
+    Write-Host ""
+    Write-Host "Stopping GUI..." -ForegroundColor Yellow
+    try {
+        Stop-Process -Id $GUI_PROCESS.Id -Force -ErrorAction SilentlyContinue
+        Write-Host "GUI stopped" -ForegroundColor Gray
+    } catch {
+        Write-Host "Could not stop GUI automatically. Please close the GUI window manually." -ForegroundColor Yellow
+    }
+}
 
 Write-Host ""
 Write-Host "Cleaning up..." -ForegroundColor Yellow

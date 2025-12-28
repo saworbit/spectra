@@ -250,19 +250,62 @@ echo "  - Spike detected: mp4 files grew by 500MB in second period"
 echo ""
 echo ""
 echo -e "${BLUE}================================${NC}"
-echo -e "${BLUE}Demo Paused - Explore the GUI${NC}"
+echo -e "${BLUE}Launching GUI...${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
-echo -e "${YELLOW}The simulation is complete and the server is ready.${NC}"
-echo -e "${YELLOW}You can now explore the Time-Travel Analytics in the GUI:${NC}"
-echo ""
-echo "  1. Open a new terminal and run: cd app && npm run dev"
-echo "  2. Navigate to the Time-Travel Analytics tab"
-echo "  3. Enter agent ID: ${AGENT_ID}"
-echo "  4. Use the timeline sliders to explore the data"
-echo ""
-echo -e "${GREEN}Press ENTER when you're done exploring to clean up and exit...${NC}"
-read -r
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo -e "${YELLOW}Warning: npm not found. Please install Node.js to run the GUI${NC}"
+    echo "You can manually start the GUI with: cd app && npm run dev"
+    echo ""
+    echo -e "${GREEN}Press ENTER to clean up and exit...${NC}"
+    read -r
+else
+    # Check if app directory exists
+    if [ ! -f "./app/package.json" ]; then
+        echo -e "${YELLOW}Warning: Cannot find app directory${NC}"
+        echo -e "${GREEN}Press ENTER to clean up and exit...${NC}"
+        read -r
+    else
+        # Launch the GUI in background
+        echo -e "${YELLOW}Starting Spectra Vision GUI in background...${NC}"
+        (cd app && npm run dev > /tmp/spectra-gui.log 2>&1) &
+        GUI_PID=$!
+
+        echo -e "${BLUE}GUI is starting (this may take a moment for npm to start Vite)...${NC}"
+        echo ""
+        echo -e "${GREEN}================================${NC}"
+        echo -e "${GREEN}Ready to Explore!${NC}"
+        echo -e "${GREEN}================================${NC}"
+        echo ""
+        echo -e "${YELLOW}The GUI should open automatically in your browser.${NC}"
+        echo -e "${YELLOW}If not, navigate to: http://localhost:5173${NC}"
+        echo ""
+        echo -e "${BLUE}Instructions:${NC}"
+        echo "  1. Click the 'Time-Travel Analytics' tab"
+        echo "  2. Enter agent ID: ${AGENT_ID}"
+        echo "  3. Use the timeline sliders to explore the data"
+        echo "  4. View velocity metrics and growth attribution"
+        echo ""
+        echo -e "${GREEN}Press ENTER when you're done exploring to clean up and exit...${NC}"
+        read -r
+
+        # Clean up GUI process
+        echo ""
+        echo -e "${YELLOW}Stopping GUI...${NC}"
+        if kill $GUI_PID 2>/dev/null; then
+            echo -e "${BLUE}GUI stopped${NC}"
+        else
+            echo -e "${YELLOW}Could not stop GUI automatically (may have already exited)${NC}"
+        fi
+
+        # Clean up GUI log
+        if [ -f "/tmp/spectra-gui.log" ]; then
+            rm -f /tmp/spectra-gui.log
+        fi
+    fi
+fi
 
 echo ""
 echo -e "${YELLOW}Cleaning up...${NC}"
