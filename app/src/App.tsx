@@ -40,6 +40,11 @@ function App() {
     setStats(null);
 
     try {
+      // Check if running in Tauri
+      if (typeof invoke === 'undefined') {
+        throw new Error('Tauri runtime not available. Please run the app using: npm run tauri dev');
+      }
+
       // Invoke the Rust command 'scan_directory'
       // limit: number of top files to return
       const result = await invoke<ScanStats>("scan_directory", {
