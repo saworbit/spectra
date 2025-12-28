@@ -274,13 +274,27 @@ else
         GUI_PID=$!
 
         echo -e "${BLUE}GUI is starting (this may take a moment for npm to start Vite)...${NC}"
+
+        # Wait for Vite to start, then open browser
+        sleep 3
+        echo -e "${BLUE}Opening browser...${NC}"
+
+        # Try port 1420 first (Tauri), then 5173 (standalone Vite)
+        # Use xdg-open on Linux, open on macOS
+        if command -v xdg-open &> /dev/null; then
+            xdg-open "http://localhost:1420" 2>/dev/null || xdg-open "http://localhost:5173" 2>/dev/null || echo -e "${YELLOW}Could not auto-open browser. Please navigate to: http://localhost:1420 or http://localhost:5173${NC}"
+        elif command -v open &> /dev/null; then
+            open "http://localhost:1420" 2>/dev/null || open "http://localhost:5173" 2>/dev/null || echo -e "${YELLOW}Could not auto-open browser. Please navigate to: http://localhost:1420 or http://localhost:5173${NC}"
+        else
+            echo -e "${YELLOW}Browser auto-open not available. Please navigate to: http://localhost:1420 or http://localhost:5173${NC}"
+        fi
+
         echo ""
         echo -e "${GREEN}================================${NC}"
         echo -e "${GREEN}Ready to Explore!${NC}"
         echo -e "${GREEN}================================${NC}"
         echo ""
-        echo -e "${YELLOW}The GUI should open automatically in your browser.${NC}"
-        echo -e "${YELLOW}If not, navigate to: http://localhost:5173${NC}"
+        echo -e "${YELLOW}Browser should now be open at http://localhost:1420${NC}"
         echo ""
         echo -e "${BLUE}Instructions:${NC}"
         echo "  1. Click the 'Time-Travel Analytics' tab"
@@ -295,7 +309,7 @@ else
         echo ""
         echo -e "${YELLOW}Stopping GUI...${NC}"
         if kill $GUI_PID 2>/dev/null; then
-            echo -e "${BLUE}GUI stopped${NC}"
+            echo -e "${BLUE}   Stopped GUI process (PID: ${GUI_PID})${NC}"
         else
             echo -e "${YELLOW}Could not stop GUI automatically (may have already exited)${NC}"
         fi
@@ -303,6 +317,7 @@ else
         # Clean up GUI log
         if [ -f "/tmp/spectra-gui.log" ]; then
             rm -f /tmp/spectra-gui.log
+            echo -e "${BLUE}   Removed log file: /tmp/spectra-gui.log${NC}"
         fi
     fi
 fi
@@ -312,26 +327,27 @@ echo -e "${YELLOW}Cleaning up...${NC}"
 
 # Clean up test data
 echo -e "${YELLOW}Deleting test agent data...${NC}"
-# Note: SurrealDB in-memory mode will lose data when server stops anyway
-# But we'll document this for clarity
-echo -e "${BLUE}Test data will be removed when server stops (using in-memory database)${NC}"
+echo -e "${BLUE}   Agent ID: ${AGENT_ID} (5 snapshots in in-memory database)${NC}"
+echo -e "${BLUE}   Data will be removed when server stops (using in-memory database)${NC}"
 
 # Stop the server if we started it
 if [ "$SCRIPT_STARTED_SERVER" = true ] && [ -n "$SERVER_PID_TO_CLEANUP" ]; then
-    echo -e "${YELLOW}Stopping Spectra Server (PID: ${SERVER_PID_TO_CLEANUP})...${NC}"
+    echo -e "${YELLOW}Stopping Spectra Server...${NC}"
     if kill "$SERVER_PID_TO_CLEANUP" 2>/dev/null; then
-        echo -e "${GREEN}Server stopped successfully${NC}"
+        echo -e "${BLUE}   Stopped server process (PID: ${SERVER_PID_TO_CLEANUP})${NC}"
+        echo -e "${BLUE}   Server was started by this script at http://localhost:3000${NC}"
     else
         echo -e "${YELLOW}Could not stop server automatically (may have already exited)${NC}"
     fi
 else
     echo -e "${BLUE}Server was already running - leaving it running${NC}"
+    echo -e "${BLUE}   Location: http://localhost:3000${NC}"
 fi
 
 # Clean up log file
 if [ -f "/tmp/spectra-server.log" ] && [ "$SCRIPT_STARTED_SERVER" = true ]; then
     rm -f /tmp/spectra-server.log
-    echo -e "${BLUE}Removed server log file${NC}"
+    echo -e "${BLUE}   Removed log file: /tmp/spectra-server.log${NC}"
 fi
 
 echo ""

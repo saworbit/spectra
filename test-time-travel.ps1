@@ -278,13 +278,30 @@ if (-not (Test-Path ".\app\package.json")) {
     $GUI_PROCESS = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd app; npm run dev" -WindowStyle Normal -PassThru
 
     Write-Host "GUI is starting (this may take a moment for npm to start Vite)..." -ForegroundColor Gray
+
+    # Wait a bit for Vite to start, then open browser
+    Start-Sleep -Seconds 3
+    Write-Host "Opening browser..." -ForegroundColor Gray
+
+    # Try port 1420 first (Tauri), then 5173 (standalone Vite)
+    try {
+        Start-Process "http://localhost:1420"
+    } catch {
+        try {
+            Start-Process "http://localhost:5173"
+        } catch {
+            Write-Host "Could not auto-open browser. Please manually navigate to:" -ForegroundColor Yellow
+            Write-Host "  http://localhost:1420 (Tauri)" -ForegroundColor Yellow
+            Write-Host "  http://localhost:5173 (Vite)" -ForegroundColor Yellow
+        }
+    }
+
     Write-Host ""
     Write-Host "================================" -ForegroundColor Green
     Write-Host "Ready to Explore!" -ForegroundColor Green
     Write-Host "================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "The GUI should open automatically in your browser." -ForegroundColor Yellow
-    Write-Host "If not, navigate to: http://localhost:5173" -ForegroundColor Yellow
+    Write-Host "Browser should now be open at http://localhost:1420" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Instructions:" -ForegroundColor Cyan
     Write-Host "  1. Click the 'Time-Travel Analytics' tab"
@@ -300,7 +317,7 @@ if (-not (Test-Path ".\app\package.json")) {
     Write-Host "Stopping GUI..." -ForegroundColor Yellow
     try {
         Stop-Process -Id $GUI_PROCESS.Id -Force -ErrorAction SilentlyContinue
-        Write-Host "GUI stopped" -ForegroundColor Gray
+        Write-Host "   Stopped GUI process (PID: $($GUI_PROCESS.Id))" -ForegroundColor Gray
     } catch {
         Write-Host "Could not stop GUI automatically. Please close the GUI window manually." -ForegroundColor Yellow
     }
@@ -311,29 +328,22 @@ Write-Host "Cleaning up..." -ForegroundColor Yellow
 
 # Clean up test data
 Write-Host "Deleting test agent data..." -ForegroundColor Yellow
-try {
-    # Delete all snapshots for the test agent
-    # Note: SurrealDB in-memory mode will lose data when server stops anyway
-    # But we'll try to clean up explicitly for good measure
-    $deleteQuery = "DELETE snapshots WHERE agent_id = '$AGENT_ID'"
-    # If there was a delete endpoint, we'd use it here
-    # For now, data will be cleaned when server stops (in-memory mode)
-    Write-Host "Test data will be removed when server stops (using in-memory database)" -ForegroundColor Gray
-} catch {
-    Write-Host "Note: Could not explicitly delete data, but in-memory database will be cleared on server stop" -ForegroundColor Gray
-}
+Write-Host "   Agent ID: $AGENT_ID (5 snapshots in in-memory database)" -ForegroundColor Gray
+Write-Host "   Data will be removed when server stops (using in-memory database)" -ForegroundColor Gray
 
 # Stop the server if we started it
 if ($SCRIPT_STARTED_SERVER -and $SERVER_PROCESS) {
-    Write-Host "Stopping Spectra Server (PID: $($SERVER_PROCESS.Id))..." -ForegroundColor Yellow
+    Write-Host "Stopping Spectra Server..." -ForegroundColor Yellow
     try {
         Stop-Process -Id $SERVER_PROCESS.Id -Force
-        Write-Host "Server stopped successfully" -ForegroundColor Green
+        Write-Host "   Stopped server process (PID: $($SERVER_PROCESS.Id))" -ForegroundColor Gray
+        Write-Host "   Server was started by this script at http://localhost:3000" -ForegroundColor Gray
     } catch {
         Write-Host "Could not stop server automatically. Please close the server window manually." -ForegroundColor Yellow
     }
 } else {
     Write-Host "Server was already running - leaving it running" -ForegroundColor Gray
+    Write-Host "   Location: http://localhost:3000" -ForegroundColor Gray
 }
 
 Write-Host ""
