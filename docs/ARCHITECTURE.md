@@ -61,7 +61,7 @@ The system is composed of three decoupled layers: **The Agent** (Edge), **The Tr
 - **Location:** `app/` directory
 - **Purpose:** Desktop visualization and user interface
 - **Deployment:** Native cross-platform application (Windows, macOS, Linux)
-- **Stack:** Tauri v2 (Rust backend) + React 18 + TypeScript (frontend)
+- **Stack:** Tauri v2 (Rust backend) + React 19 + TypeScript (frontend)
 
 ### Layer 1: The Agent (Rust)
 
@@ -74,7 +74,7 @@ The system is composed of three decoupled layers: **The Agent** (Edge), **The Tr
 
 **Current Stack:**
 - CLI: Rust, jwalk (Parallelism), serde (Serialization), clap (CLI Parsing)
-- GUI: Tauri v2, React 18, TypeScript, Vite (Development)
+- GUI: Tauri v2, React 19, TypeScript, Vite 7 (Development)
 
 **Future Stack:** Rusqlite (Local State), rust-bert (Content Classification).
 
@@ -287,6 +287,10 @@ Policy {
 - **Audit Trail:** All policy executions are logged
 - **Local Autonomy:** Agents continue operating if server is unreachable
 - **Policy Validation:** Server-side and client-side policy validation
+- **API Key Authentication:** Optional `X-API-Key` header validation (set `SPECTRA_API_KEY` env var)
+- **CORS Restriction:** Server only accepts requests from configured origins (set `SPECTRA_CORS_ORIGINS` env var)
+- **Content Security Policy:** Tauri app enforces CSP to prevent XSS and unauthorized resource loading
+- **Error Boundary:** React frontend catches component crashes and displays recovery UI
 
 #### Usage
 
@@ -320,9 +324,10 @@ cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze -
 - [x] CLI integration with `--server` and `--enforce` flags
 - [x] Snapshot upload from agents
 - [x] Comprehensive governance tests
-- [ ] SurrealDB integration for persistent storage
-- [ ] Time-travel query interface
-- [ ] Agent authentication and authorization
+- [x] SurrealDB integration for persistent storage
+- [x] Time-travel query interface (GUI)
+- [x] API key authentication for server endpoints
+- [x] CORS restriction with configurable origins
 - [ ] Policy management UI
 - [ ] Growth rate analytics and alerting
 - [ ] Archive functionality implementation

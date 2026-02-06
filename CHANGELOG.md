@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security Hardening & Dependency Audit (v0.5.1)
+
+**Security Fixes:**
+- **Content Security Policy**: Enabled proper CSP in Tauri configuration (was `null`/disabled)
+  - `default-src 'self'`, restricted `connect-src` to `localhost:3000`
+  - `'unsafe-inline'` for `style-src` (required by MUI/Emotion CSS-in-JS)
+- **CORS Restriction**: Replaced `CorsLayer::permissive()` with an explicit origin allowlist
+  - Default origins: `http://localhost:1420`, `tauri://localhost`, `https://tauri.localhost`
+  - Configurable via `SPECTRA_CORS_ORIGINS` environment variable (comma-separated)
+  - Only allows `GET`/`POST` methods and `Content-Type`/`X-API-Key` headers
+- **API Key Authentication**: Added middleware to Spectra Server
+  - Set `SPECTRA_API_KEY` environment variable to enable
+  - All requests must include `X-API-Key` header when enabled
+  - Graceful fallback: unauthenticated access in development mode when unset
+- **React Error Boundary**: Added crash-recovery UI wrapping `<App />`
+  - Prevents white-screen crashes from unhandled React errors
+  - Displays error message with "Try again" button
+
+**Dependency Upgrades:**
+- Replaced deprecated `lazy_static` with `std::sync::OnceLock` (stable since Rust 1.70)
+- Upgraded `reqwest` from 0.11 to 0.12 (eliminates 4 transitive vulnerabilities)
+- Reduced `tokio` features from `"full"` to `["rt-multi-thread", "macros", "net"]`
+- Updated `bytes` 1.11.0 → 1.11.1 (fixes integer overflow in `BytesMut::reserve`)
+- Updated `rkyv` 0.7.45 → 0.7.46 (fixes undefined behavior on OOM)
+- Updated `time` 0.3.44 → 0.3.47 (fixes DoS via stack exhaustion)
+
+**Frontend Fixes:**
+- Fixed memory leak in `TimeSlider` useEffect (added cancelled-flag cleanup pattern)
+- Fixed mutating `.sort()` → `[...history].sort()` to avoid mutating input arrays
+- Added test dependencies to `package.json`: `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`
+- Added `test` and `test:watch` npm scripts
+
+**Audit Results (Post-Fix):**
+- Resolved: 7 → 4 vulnerabilities (remaining 4 are transitive via `surrealdb` and `rust-bert`)
+- `cargo fmt`: Clean
+- `cargo clippy -D warnings`: Zero warnings across all 4 crates
+- `tsc --noEmit`: Clean
+- All 13 Rust tests passing
+
 ### Added - Phase 3.5: Time-Travel Analytics (v0.5.0)
 
 **⏳ Time-Series Intelligence Engine:**
@@ -473,7 +512,7 @@ println!("Found {} files", stats.total_files);
 - JSON output includes all analysis metadata
 
 **Dependencies:**
-- `regex`, `lazy_static`, `rust-bert` (optional), `tempfile`
+- `regex`, `rust-bert` (optional), `tempfile`
 
 #### Changed
 - Version: 0.1.0 → 0.2.0

@@ -1,25 +1,29 @@
-use lazy_static::lazy_static;
 use regex::RegexSet;
 use std::path::Path;
+use std::sync::OnceLock;
 
-lazy_static! {
-    static ref SENSITIVE_PATTERNS: RegexSet = RegexSet::new([
-        r"(?i)password",
-        r"(?i)secret",
-        r"(?i)key",
-        r"(?i)token",
-        r"(?i)\.pem$",
-        r"(?i)\.kdbx$", // KeePass
-        r"(?i)backup",
-        r"(?i)dump",
-        r"(?i)\.p12$",  // Certificate files
-        r"(?i)\.pfx$",  // Certificate files
-        r"(?i)credentials",
-        r"(?i)\.env$",  // Environment files
-        r"(?i)config",  // Configuration files (may contain secrets)
-        r"(?i)\.ssh",   // SSH keys
-        r"(?i)wallet",  // Cryptocurrency wallets
-    ]).unwrap();
+fn sensitive_patterns() -> &'static RegexSet {
+    static PATTERNS: OnceLock<RegexSet> = OnceLock::new();
+    PATTERNS.get_or_init(|| {
+        RegexSet::new([
+            r"(?i)password",
+            r"(?i)secret",
+            r"(?i)key",
+            r"(?i)token",
+            r"(?i)\.pem$",
+            r"(?i)\.kdbx$", // KeePass
+            r"(?i)backup",
+            r"(?i)dump",
+            r"(?i)\.p12$", // Certificate files
+            r"(?i)\.pfx$", // Certificate files
+            r"(?i)credentials",
+            r"(?i)\.env$", // Environment files
+            r"(?i)config", // Configuration files (may contain secrets)
+            r"(?i)\.ssh",  // SSH keys
+            r"(?i)wallet", // Cryptocurrency wallets
+        ])
+        .expect("failed to compile sensitive pattern regexes")
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +58,7 @@ pub fn analyze_filename_risk(path: &Path) -> RiskLevel {
     let filename_lower = filename.to_lowercase();
 
     // Check if either filename or full path matches sensitive patterns
-    if !SENSITIVE_PATTERNS.is_match(&filename) && !SENSITIVE_PATTERNS.is_match(&path_str) {
+    if !sensitive_patterns().is_match(&filename) && !sensitive_patterns().is_match(&path_str) {
         return RiskLevel::None;
     }
 

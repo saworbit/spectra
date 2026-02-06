@@ -20,13 +20,17 @@ export function TimeSlider({ agentId, onRangeSelect }: TimeSliderProps) {
   const [selectedEnd, setSelectedEnd] = useState<number | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadHistory() {
       setLoading(true);
       const history = await fetchAgentHistory(agentId);
 
+      if (cancelled) return;
+
       if (history.length > 0) {
         // Sort timestamps in ascending order (oldest to newest)
-        const sorted = history.sort((a, b) => a - b);
+        const sorted = [...history].sort((a, b) => a - b);
         setTimestamps(sorted);
 
         // Auto-select first and last if we have at least 2 snapshots
@@ -35,12 +39,16 @@ export function TimeSlider({ agentId, onRangeSelect }: TimeSliderProps) {
           setSelectedEnd(sorted[sorted.length - 1]);
           onRangeSelect(sorted[0], sorted[sorted.length - 1]);
         }
+      } else {
+        setTimestamps([]);
       }
 
       setLoading(false);
     }
 
     loadHistory();
+
+    return () => { cancelled = true; };
   }, [agentId, onRangeSelect]);
 
   const handleStartChange = (index: number) => {

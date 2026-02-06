@@ -2,7 +2,7 @@
 
 **Version:** 0.5.0
 **Status:** Phase 3.5 Implementation
-**Last Updated:** 2025-12-28
+**Last Updated:** 2026-02-06
 
 ---
 
@@ -72,6 +72,9 @@ This feature transforms Spectra from a snapshot tool into a **time-series analyt
 **Endpoint:** `POST /api/v1/ingest`
 
 **Purpose:** Store a filesystem snapshot for historical analysis
+
+**Headers:**
+- `X-API-Key: <key>` (required when `SPECTRA_API_KEY` env var is set)
 
 **Request Body:**
 ```json

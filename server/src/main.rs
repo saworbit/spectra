@@ -14,7 +14,10 @@
 //! - "Who caused the spike last Tuesday?"
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, Request, State},
+    http::{header, HeaderName, Method, StatusCode},
+    middleware::{self, Next},
+    response::Response,
     routing::{get, post},
     Json, Router,
 };
@@ -24,7 +27,7 @@ use std::sync::Arc;
 use surrealdb::engine::local::Mem;
 use surrealdb::Surreal;
 use tokio::net::TcpListener;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 // --- Data Models ---
 
@@ -81,6 +84,31 @@ struct Policy {
 
 struct AppState {
     db: Surreal<surrealdb::engine::local::Db>,
+}
+
+// --- Middleware ---
+
+/// API key authentication middleware.
+///
+/// When `SPECTRA_API_KEY` is set, all requests must include a matching
+/// `X-API-Key` header. When unset, all requests are allowed (development mode).
+async fn require_api_key(request: Request, next: Next) -> Result<Response, StatusCode> {
+    let expected_key = std::env::var("SPECTRA_API_KEY").ok();
+
+    // If no API key is configured, allow all requests (development mode)
+    let Some(expected) = expected_key else {
+        return Ok(next.run(request).await);
+    };
+
+    let provided = request
+        .headers()
+        .get("x-api-key")
+        .and_then(|v| v.to_str().ok());
+
+    match provided {
+        Some(key) if key == expected => Ok(next.run(request).await),
+        _ => Err(StatusCode::UNAUTHORIZED),
+    }
 }
 
 // --- Handlers ---
@@ -320,13 +348,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let shared_state = Arc::new(AppState { db });
 
-    // Build the router with CORS enabled for React frontend
+    // CORS configuration - restrict to known origins
+    // Override with SPECTRA_CORS_ORIGINS env var (comma-separated)
+    let cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::list(
+            std::env::var("SPECTRA_CORS_ORIGINS")
+                .unwrap_or_else(|_| {
+                    "http://localhost:1420,tauri://localhost,https://tauri.localhost".to_string()
+                })
+                .split(',')
+                .filter_map(|s| s.trim().parse().ok()),
+        ))
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE, HeaderName::from_static("x-api-key")]);
+
+    if std::env::var("SPECTRA_API_KEY").is_ok() {
+        tracing::info!("🔐 API key authentication enabled");
+    } else {
+        tracing::warn!(
+            "⚠️  No SPECTRA_API_KEY set - running without authentication (development mode)"
+        );
+    }
+
+    // Build the router with restricted CORS and optional API key auth
     let app = Router::new()
         .route("/api/v1/ingest", post(ingest_snapshot))
         .route("/api/v1/history/:agent_id", get(get_agent_history))
         .route("/api/v1/velocity/:agent_id", get(get_velocity))
         .route("/api/v1/policies", get(get_policies))
-        .layer(CorsLayer::permissive()) // Allow GUI to connect from localhost
+        .layer(middleware::from_fn(require_api_key))
+        .layer(cors)
         .with_state(shared_state);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await?;

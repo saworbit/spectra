@@ -185,7 +185,16 @@ Phase 3 is now **implemented** with the following status:
 2. **Dry-Run by Default**: Governance defaults to read-only reporting
 3. **Local Autonomy**: Agents continue operating if server is unreachable
 4. **Audit Trail**: All policy executions are logged (planned)
-5. **Authentication**: Agent authentication coming in future releases
+5. **API Key Authentication**: Set `SPECTRA_API_KEY` env var to require `X-API-Key` header on all requests
+6. **CORS Restriction**: Only configured origins can access the API (set `SPECTRA_CORS_ORIGINS` env var)
+7. **Content Security Policy**: Tauri app enforces CSP to prevent unauthorized resource loading
+
+### Server Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SPECTRA_API_KEY` | When set, all API requests must include a matching `X-API-Key` header | Unset (no auth, dev mode) |
+| `SPECTRA_CORS_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:1420,tauri://localhost,https://tauri.localhost` |
 
 ## Troubleshooting
 

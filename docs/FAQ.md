@@ -218,6 +218,14 @@ Spectra is designed for extensibility:
 
 All analysis happens locally.
 
+### How is the server API secured?
+
+The Spectra server supports two security mechanisms:
+
+1. **API Key Authentication**: Set the `SPECTRA_API_KEY` environment variable on the server. When set, all API requests must include a matching `X-API-Key` header. When unset, the server runs in open dev mode.
+
+2. **CORS Restriction**: Set `SPECTRA_CORS_ORIGINS` to a comma-separated list of allowed origins (defaults to `http://localhost:1420,tauri://localhost,https://tauri.localhost`). Only requests from these origins are accepted.
+
 ### How is sensitive data handled?
 
 - **Local-first**: All processing happens on the agent machine
@@ -486,4 +494,4 @@ Partially:
 - **Issues**: GitHub Issues for bugs and feature requests
 - **Community**: Join our Discord (link coming soon)
 
-*This FAQ is updated regularly. Last updated: 2025-12-28*
+*This FAQ is updated regularly. Last updated: 2026-02-06*

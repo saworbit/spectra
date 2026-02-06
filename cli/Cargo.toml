@@ -23,10 +23,9 @@ humansize = "2.0"    # Readable units
 
 # Phase 2: Heuristics & Analysis
 regex = "1.10"
-lazy_static = "1.4"
 
 # Phase 3: Federation & Governance
-reqwest = { version = "0.11", features = ["json", "blocking"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
 chrono = "0.4"
 config = "0.13"
 

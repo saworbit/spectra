@@ -64,6 +64,11 @@ This guide covers the development setup, workflows, and best practices for Spect
   cargo install flamegraph
   ```
 
+- **Cargo Audit**: Security vulnerability scanner
+  ```bash
+  cargo install cargo-audit
+  ```
+
 - **VSCode Extensions**:
   - rust-analyzer (Rust language server)
   - CodeLLDB (Rust debugger)
@@ -218,10 +223,14 @@ cargo clippy --workspace -- -D warnings
 # Run all tests
 cargo test --workspace
 
+# Security audit
+cargo audit
+
 # Frontend checks
 cd app
 npx tsc --noEmit
 npm run build
+npm test
 ```
 
 **Windows**: Use `validate-refactor.bat` to run all checks at once.
@@ -328,7 +337,12 @@ describe('RiskTreemap', () => {
 });
 ```
 
-**Note**: Testing infrastructure is being set up. Add `vitest` and `@testing-library/react` to run these.
+Run frontend tests:
+```bash
+cd app
+npm test           # Single run
+npm run test:watch # Watch mode
+```
 
 ### Test Coverage
 
@@ -612,8 +626,8 @@ cargo build
 ### Frontend Issues
 
 **Error: "Cannot find module '@testing-library/react'"**
-- Test files are excluded from compilation
-- This is expected and won't affect builds
+- Run `npm install` in the `app/` directory to install test dependencies
+- Test dependencies (`vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`) are in `devDependencies`
 
 **Error: "ERESOLVE peer dependency"**
 ```bash

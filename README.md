@@ -125,6 +125,13 @@ cargo run -p spectra-server
 # The server listens on http://0.0.0.0:3000
 ```
 
+**Server Environment Variables:**
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SPECTRA_API_KEY` | API key for authentication. When set, all requests must include `X-API-Key` header. | Unset (no auth) |
+| `SPECTRA_CORS_ORIGINS` | Comma-separated list of allowed CORS origins. | `http://localhost:1420,tauri://localhost,https://tauri.localhost` |
+
 ### Running Federated Agents (Phase 3)
 
 ```bash
@@ -307,7 +314,8 @@ spectra/
 │   ├── src/
 │   │   ├── types.ts           # TypeScript interfaces for scan results
 │   │   ├── App.tsx            # Enterprise dashboard implementation
-│   │   └── App.css            # Dark-themed enterprise styling
+│   │   ├── App.css            # Dark-themed enterprise styling
+│   │   └── ErrorBoundary.tsx  # React crash-recovery boundary
 │   ├── src-tauri/
 │   │   └── src/
 │   │       └── lib.rs         # Tauri commands using spectra-core

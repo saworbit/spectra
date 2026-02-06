@@ -10,7 +10,7 @@ keywords = ["federation", "server", "governance", "analytics"]
 categories = ["web-programming::http-server"]
 
 [dependencies]
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net"] }
 axum = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

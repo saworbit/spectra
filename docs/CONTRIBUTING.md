@@ -78,6 +78,9 @@ cargo check --workspace
 
 # Test suite
 cargo test --workspace
+
+# Security audit (check for known vulnerabilities)
+cargo audit
 ```
 
 **Tip**: Run `validate-refactor.bat` (Windows) to run all checks at once.
@@ -215,6 +218,7 @@ How was this tested?
 - [ ] Tests pass locally (`cargo test --workspace`)
 - [ ] Code formatted (`cargo fmt --all -- --check`)
 - [ ] Clippy passes (`cargo clippy --workspace -- -D warnings`)
+- [ ] Security audit clean (`cargo audit`)
 - [ ] Frontend builds (`cd app && npm run build`)
 - [ ] Documentation updated
 - [ ] CHANGELOG.md updated
@@ -229,6 +233,7 @@ All pull requests must pass automated CI checks:
 - **Linting**: `cargo clippy --workspace -- -D warnings`
 - **Compilation**: `cargo check --workspace`
 - **Tests**: `cargo test --workspace` on Ubuntu, Windows, and macOS
+- **Security audit**: `cargo audit` (checks for known vulnerabilities in dependencies)
 
 ### Frontend CI
 - **Dependencies**: `npm ci --legacy-peer-deps`
