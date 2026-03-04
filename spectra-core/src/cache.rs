@@ -77,10 +77,7 @@ impl ScanCache {
         }
         let meta = fs::metadata(path).ok()?;
         let mtime = meta.modified().ok()?;
-        let secs = mtime
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .ok()?
-            .as_secs();
+        let secs = mtime.duration_since(SystemTime::UNIX_EPOCH).ok()?.as_secs();
         if secs != entry.mtime_secs {
             return None;
         }

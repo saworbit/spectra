@@ -306,11 +306,7 @@ fn main() -> Result<()> {
         }
 
         // 4. IQR-based entropy outlier detection (#4)
-        let entropies: Vec<f32> = stats
-            .top_files
-            .iter()
-            .filter_map(|f| f.entropy)
-            .collect();
+        let entropies: Vec<f32> = stats.top_files.iter().filter_map(|f| f.entropy).collect();
 
         if let Some(outlier_report) = detect_outliers(&entropies) {
             // Map outlier indices back to file records
@@ -327,10 +323,7 @@ fn main() -> Result<()> {
             if !args.json {
                 println!(
                     "📊 Entropy Stats: Q1={:.2} Median={:.2} Q3={:.2} IQR={:.2}",
-                    outlier_report.q1,
-                    outlier_report.median,
-                    outlier_report.q3,
-                    outlier_report.iqr
+                    outlier_report.q1, outlier_report.median, outlier_report.q3, outlier_report.iqr
                 );
                 if !outlier_report.outlier_indices.is_empty() {
                     println!(

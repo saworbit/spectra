@@ -95,7 +95,11 @@ impl FileSystemWatcher {
 
         WatchEvent {
             kind,
-            paths: event.paths.iter().map(|p| p.display().to_string()).collect(),
+            paths: event
+                .paths
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect(),
         }
     }
 }

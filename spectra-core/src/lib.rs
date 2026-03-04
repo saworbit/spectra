@@ -47,9 +47,9 @@ pub fn detect_device_type(path: &Path) -> DeviceType {
     // \\?\UNC\server\share -> \\server\share  (must check before \\?\)
     // \\?\C:\...           -> c:\...
     if path_str.starts_with(r"\\?\unc\") {
-        path_str = format!(r"\\{}", &path_str[8..]).into();
+        path_str = format!(r"\\{}", &path_str[8..]);
     } else if path_str.starts_with(r"\\?\") {
-        path_str = path_str[4..].to_string().into();
+        path_str = path_str[4..].to_string();
     }
 
     let mut best_match: Option<(usize, DeviceType)> = None;
@@ -228,7 +228,7 @@ impl Scanner {
 
                 // Emit progress every 1000 items
                 item_counter += 1;
-                if item_counter % 1000 == 0 {
+                if item_counter.is_multiple_of(1000) {
                     if let Some(cb) = &self.progress_callback {
                         cb(ScanProgress {
                             files_scanned: stats.total_files,

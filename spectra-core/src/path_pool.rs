@@ -20,7 +20,7 @@ impl PathPool {
 
     /// Intern a full path, returning a CompactPath with shared prefix.
     pub fn intern(&mut self, full_path: &str) -> CompactPath {
-        let (dir, file) = match full_path.rfind(|c: char| c == '/' || c == '\\') {
+        let (dir, file) = match full_path.rfind(|c: char| ['/', '\\'].contains(&c)) {
             Some(pos) => (&full_path[..pos], &full_path[pos + 1..]),
             None => ("", full_path),
         };
@@ -67,8 +67,8 @@ impl PathPool {
         if total_paths == 0 || self.prefixes.is_empty() {
             return 0;
         }
-        let avg_prefix_len: usize = self.reverse.iter().map(|s| s.len()).sum::<usize>()
-            / self.reverse.len().max(1);
+        let avg_prefix_len: usize =
+            self.reverse.iter().map(|s| s.len()).sum::<usize>() / self.reverse.len().max(1);
         avg_prefix_len * total_paths.saturating_sub(self.prefixes.len())
     }
 }

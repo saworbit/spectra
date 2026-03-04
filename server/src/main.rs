@@ -448,8 +448,11 @@ async fn get_aggregate(
 
                 if !in_bucket.is_empty() {
                     let count = in_bucket.len() as f64;
-                    let avg_size =
-                        in_bucket.iter().map(|s| s.total_size_bytes as f64).sum::<f64>() / count;
+                    let avg_size = in_bucket
+                        .iter()
+                        .map(|s| s.total_size_bytes as f64)
+                        .sum::<f64>()
+                        / count;
                     let avg_files =
                         in_bucket.iter().map(|s| s.file_count as f64).sum::<f64>() / count;
 

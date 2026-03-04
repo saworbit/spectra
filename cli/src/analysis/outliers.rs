@@ -1,15 +1,15 @@
-/// IQR-based entropy outlier detection.
-///
-/// Instead of fixed entropy thresholds (which produce false positives when
-/// a directory is full of compressed files), this module identifies files
-/// whose entropy is statistically anomalous relative to their peers.
-///
-/// Uses the Interquartile Range (IQR) method:
-/// - Q1 = 25th percentile, Q3 = 75th percentile
-/// - IQR = Q3 - Q1
-/// - Lower fence = Q1 - 1.5 * IQR
-/// - Upper fence = Q3 + 1.5 * IQR
-/// - Outliers = values outside the fences
+//! IQR-based entropy outlier detection.
+//!
+//! Instead of fixed entropy thresholds (which produce false positives when
+//! a directory is full of compressed files), this module identifies files
+//! whose entropy is statistically anomalous relative to their peers.
+//!
+//! Uses the Interquartile Range (IQR) method:
+//! - Q1 = 25th percentile, Q3 = 75th percentile
+//! - IQR = Q3 - Q1
+//! - Lower fence = Q1 - 1.5 * IQR
+//! - Upper fence = Q3 + 1.5 * IQR
+//! - Outliers = values outside the fences
 
 /// Results of IQR-based outlier detection.
 #[derive(Debug, Clone)]
