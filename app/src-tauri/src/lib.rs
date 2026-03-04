@@ -8,6 +8,7 @@
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
+use tauri::Emitter;
 
 // Import core scanner
 use spectra_core::{ScanStats, Scanner};
@@ -17,23 +18,17 @@ use spectra_core::{ScanStats, Scanner};
 #[derive(Serialize, Debug, Clone)]
 struct TreeNode {
     name: String,
-    // Nivo requires specific fields for value/children
-    #[serde(rename = "loc")] // 'loc' or 'value' for size
+    #[serde(rename = "loc")]
     size: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     children: Option<Vec<TreeNode>>,
-
-    // Metadata for Visualization
-    entropy: f32,   // 0.0 to 8.0
-    risk_score: u8, // 0 to 100
+    entropy: f32,
+    risk_score: u8,
 }
 
 // --- Logic ---
 
-// Mocking the Phase 2 entropy logic for the GUI example
 fn calculate_mock_entropy(path: &Path) -> f32 {
-    // TODO: In production, use spectra_core for scanning + CLI analysis modules for entropy
-    // For now, simulate entropy based on extension for visualization
     if let Some(ext) = path.extension() {
         match ext.to_string_lossy().as_ref() {
             "zip" | "enc" => 7.8,
@@ -53,7 +48,6 @@ fn scan_directory_recursive(path: &Path, depth: usize, max_depth: usize) -> Opti
 
     let metadata = fs::metadata(path).ok()?;
 
-    // Handle root directories (e.g., C:\, /, etc.) which don't have a file_name
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -78,14 +72,13 @@ fn scan_directory_recursive(path: &Path, depth: usize, max_depth: usize) -> Opti
             for entry in entries.flatten() {
                 if let Some(node) = scan_directory_recursive(&entry.path(), depth + 1, max_depth) {
                     dir_size += node.size;
-                    total_entropy += node.entropy; // Simplified aggregation
+                    total_entropy += node.entropy;
                     file_count += 1;
                     children.push(node);
                 }
             }
         }
 
-        // Directory entropy is average of children (simplified)
         let avg_entropy = if file_count > 0 {
             total_entropy / file_count as f32
         } else {
@@ -105,42 +98,41 @@ fn scan_directory_recursive(path: &Path, depth: usize, max_depth: usize) -> Opti
 
 // --- Commands ---
 
-// EXISTING COMMAND: TreeNode visualization
 #[tauri::command]
 fn get_scan_tree(path: String) -> Result<TreeNode, String> {
     let root = Path::new(&path);
 
-    // Check if path exists
     if !root.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
 
-    // Check if we have permission to read
     if let Err(e) = fs::metadata(root) {
         return Err(format!("Cannot access path: {}", e));
     }
 
-    scan_directory_recursive(root, 0, 3) // Limit depth for demo performance
+    scan_directory_recursive(root, 0, 3)
         .ok_or_else(|| format!("Failed to scan path: {}. Try a subdirectory instead.", path))
 }
 
-// NEW COMMAND: Basic statistics scan using core library
+/// Progressive scan with streaming progress events (#1).
+/// Emits "scan-progress" events to the frontend during scanning.
 #[tauri::command]
-fn scan_directory(path: String, limit: usize) -> Result<ScanStats, String> {
+fn scan_directory(app: tauri::AppHandle, path: String, limit: usize) -> Result<ScanStats, String> {
     let root = Path::new(&path);
 
-    // Validate path exists
     if !root.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
 
-    // Validate read permissions
     if let Err(e) = fs::metadata(root) {
         return Err(format!("Cannot access path: {}", e));
     }
 
-    // Use core scanner for statistics
-    let scanner = Scanner::new(root, limit);
+    let app_handle = app.clone();
+    let scanner = Scanner::new(root, limit).with_progress(move |progress| {
+        let _ = app_handle.emit("scan-progress", &progress);
+    });
+
     scanner.scan().map_err(|e| format!("Scan failed: {}", e))
 }
 
@@ -148,10 +140,7 @@ fn scan_directory(path: String, limit: usize) -> Result<ScanStats, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            get_scan_tree,  // EXISTING: For visualization
-            scan_directory  // NEW: For statistics
-        ])
+        .invoke_handler(tauri::generate_handler![get_scan_tree, scan_directory])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,8 +1,8 @@
 # Time-Travel Analytics
 
-**Version:** 0.5.0
-**Status:** Phase 3.5 Implementation
-**Last Updated:** 2026-02-06
+**Version:** 0.6.0
+**Status:** Phase 3.5 + Phase 5 Enhancements
+**Last Updated:** 2026-03-04
 
 ---
 
@@ -38,8 +38,14 @@ This feature transforms Spectra from a snapshot tool into a **time-series analyt
        ├─ GET /api/v1/history/:agent_id
        │  Returns: [timestamp1, timestamp2, ...]
        │
-       └─ GET /api/v1/velocity/:agent_id?start=T0&end=T1
-          Returns: VelocityReport (Δ bytes, Δ files, bytes/sec)
+       ├─ GET /api/v1/velocity/:agent_id?start=T0&end=T1
+       │  Returns: VelocityReport (Δ bytes, Δ files, bytes/sec)
+       │
+       ├─ GET /api/v1/snapshot/:agent_id?timestamp=T
+       │  Returns: AgentSnapshot at closest timestamp
+       │
+       └─ GET /api/v1/aggregate/:agent_id?start=T0&end=T1&bucket_seconds=N
+          Returns: [TimeSeriesBucket] (avg_size, avg_files per bucket)
 
 ┌─────────────────┐
 │ Spectra Vision  │  Time Slider + Velocity Card
@@ -158,6 +164,87 @@ curl "http://localhost:3000/api/v1/velocity/agent_laptop_001?start=1735142400&en
 - Average velocity: **1.93 KB/s**
 - Top contributor: `.log` files (+300MB)
 - Spike detected: `.mp4` files (+200MB)
+
+---
+
+### 4. Get Snapshot at Time (v0.6.0)
+
+**Endpoint:** `GET /api/v1/snapshot/:agent_id?timestamp=<timestamp>`
+
+**Purpose:** Retrieve the snapshot closest to a specific point in time
+
+**Example:**
+```bash
+curl "http://localhost:3000/api/v1/snapshot/agent_laptop_001?timestamp=1735315200"
+```
+
+**Response:**
+```json
+{
+  "agent_id": "agent_laptop_001",
+  "timestamp": 1735315200,
+  "hostname": "dev-machine",
+  "total_size_bytes": 1200000000,
+  "file_count": 5200,
+  "top_extensions": [["log", 400000000, 200], ["jpg", 350000000, 750]]
+}
+```
+
+If no `timestamp` query parameter is provided, returns the most recent snapshot.
+
+---
+
+### 5. Time-Series Aggregation (v0.6.0)
+
+**Endpoint:** `GET /api/v1/aggregate/:agent_id?start=<ts>&end=<ts>&bucket_seconds=<n>`
+
+**Purpose:** Aggregate snapshots into time-series buckets for charting
+
+**Parameters:**
+- `start` - Start timestamp (Unix epoch seconds)
+- `end` - End timestamp (Unix epoch seconds)
+- `bucket_seconds` - Bucket interval (default: 3600 = 1 hour)
+
+**Example:**
+```bash
+curl "http://localhost:3000/api/v1/aggregate/agent_laptop_001?start=1735142400&end=1735401600&bucket_seconds=3600"
+```
+
+**Response:**
+```json
+[
+  {
+    "bucket_start": 1735142400,
+    "bucket_end": 1735146000,
+    "avg_size_bytes": 1100000000,
+    "avg_file_count": 5100,
+    "snapshot_count": 2
+  },
+  {
+    "bucket_start": 1735146000,
+    "bucket_end": 1735149600,
+    "avg_size_bytes": 1150000000,
+    "avg_file_count": 5200,
+    "snapshot_count": 1
+  }
+]
+```
+
+**Use Cases:**
+- Render time-series charts in the frontend
+- Identify growth trends at hourly/daily/weekly granularity
+- Compare average file count across time buckets
+
+---
+
+### Database Indexes (v0.6.0)
+
+The server creates optimized indexes on startup for query performance:
+
+```surrealql
+DEFINE INDEX idx_snapshots_agent ON TABLE snapshots COLUMNS agent_id;
+DEFINE INDEX idx_snapshots_agent_time ON TABLE snapshots COLUMNS agent_id, timestamp;
+```
 
 ---
 

@@ -15,14 +15,18 @@ use std::path::PathBuf;
 
 // Import core scanner
 use spectra_core::{
-    ExtensionStat, FileRecord as CoreFileRecord, ScanStats as CoreScanStats, Scanner,
+    ExtensionStat, FileRecord as CoreFileRecord, ScanCache, ScanStats as CoreScanStats, Scanner,
 };
 
 mod analysis;
-use analysis::{analyze_filename_risk, calculate_shannon_entropy, RiskLevel, SemanticEngine};
+use analysis::{
+    analyze_filename_risk, calculate_shannon_entropy, detect_outliers, RiskLevel, SemanticEngine,
+};
 
 mod governance;
 use governance::engine::{Action, Policy, Rule};
+
+mod watch;
 
 /// S.P.E.C.T.R.A.
 /// Scalable Platform for Enterprise Content Topology & Resource Analytics
@@ -56,6 +60,10 @@ struct Args {
     /// Enable Active Governance (Execute policies - defaults to dry-run)
     #[arg(long)]
     enforce: bool,
+
+    /// Watch directory for real-time changes after scanning
+    #[arg(long)]
+    watch: bool,
 }
 
 // CLI-specific FileRecord WITH analysis fields
@@ -69,6 +77,9 @@ struct AnalyzedFileRecord {
     risk_level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     semantic_tag: Option<String>,
+    /// Whether this file is a statistical entropy outlier (IQR method)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    entropy_outlier: Option<bool>,
 }
 
 // Conversion from core FileRecord to analyzed FileRecord
@@ -80,6 +91,7 @@ impl From<CoreFileRecord> for AnalyzedFileRecord {
             entropy: None,
             risk_level: None,
             semantic_tag: None,
+            entropy_outlier: None,
         }
     }
 }
@@ -94,6 +106,12 @@ struct CliScanStats {
     scan_duration_ms: u128,
     extensions: HashMap<String, ExtensionStat>,
     top_files: Vec<AnalyzedFileRecord>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    device_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    threads_used: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cache_hits: Option<usize>,
 }
 
 // Conversion from core ScanStats to CLI ScanStats
@@ -107,6 +125,9 @@ impl From<CoreScanStats> for CliScanStats {
             scan_duration_ms: core.scan_duration_ms,
             extensions: core.extensions,
             top_files: core.top_files.into_iter().map(Into::into).collect(),
+            device_type: core.device_type.map(|d| format!("{:?}", d)),
+            threads_used: core.threads_used,
+            cache_hits: None,
         }
     }
 }
@@ -208,6 +229,7 @@ fn main() -> Result<()> {
     }
 
     // USE CORE SCANNER for basic scanning (Phase 1)
+    // Device-aware I/O: thread count is auto-tuned based on SSD vs HDD
     let scanner = Scanner::new(root_path.clone(), args.limit);
     let core_stats = scanner.scan()?;
 
@@ -215,7 +237,6 @@ fn main() -> Result<()> {
     let mut stats = CliScanStats::from(core_stats);
 
     // PHASE 3: Apply governance policies (if configured)
-    // Note: We need a separate jwalk pass for governance because we need metadata
     if !policies.is_empty() {
         if !args.json {
             println!("⚙️  Evaluating {} governance policies...", policies.len());
@@ -243,6 +264,10 @@ fn main() -> Result<()> {
             );
         }
 
+        // Load entropy cache (#5 - Hash/entropy caching)
+        let mut cache = ScanCache::load(&root_path);
+        let mut cache_hits = 0usize;
+
         // Initialize Semantic Engine (only if --semantic flag is used)
         let semantic_engine = if args.semantic {
             Some(SemanticEngine::new())
@@ -253,9 +278,13 @@ fn main() -> Result<()> {
         for file_record in &mut stats.top_files {
             let p = PathBuf::from(&file_record.path);
 
-            // 1. Calculate Entropy (Tier 1)
-            if let Ok(ent) = calculate_shannon_entropy(&p) {
+            // 1. Calculate Entropy (with cache)
+            if let Some(cached) = cache.get_entropy(&p, file_record.size_bytes) {
+                file_record.entropy = Some(cached);
+                cache_hits += 1;
+            } else if let Ok(ent) = calculate_shannon_entropy(&p) {
                 file_record.entropy = Some(ent);
+                cache.put_entropy(&p, file_record.size_bytes, ent);
             }
 
             // 2. Heuristic Risk Analysis (Tier 1)
@@ -266,7 +295,6 @@ fn main() -> Result<()> {
 
             // 3. Semantic Tag (Tier 2 - only if enabled and file is likely text)
             if let Some(engine) = &semantic_engine {
-                // Only classify files with low entropy (likely text)
                 if file_record.entropy.unwrap_or(10.0) < 6.0 {
                     if let Some(tags) = engine.classify(&p) {
                         if tags.confidence > 0.5 {
@@ -275,6 +303,58 @@ fn main() -> Result<()> {
                     }
                 }
             }
+        }
+
+        // 4. IQR-based entropy outlier detection (#4)
+        let entropies: Vec<f32> = stats
+            .top_files
+            .iter()
+            .filter_map(|f| f.entropy)
+            .collect();
+
+        if let Some(outlier_report) = detect_outliers(&entropies) {
+            // Map outlier indices back to file records
+            let mut entropy_idx = 0;
+            for file_record in &mut stats.top_files {
+                if file_record.entropy.is_some() {
+                    if outlier_report.outlier_indices.contains(&entropy_idx) {
+                        file_record.entropy_outlier = Some(true);
+                    }
+                    entropy_idx += 1;
+                }
+            }
+
+            if !args.json {
+                println!(
+                    "📊 Entropy Stats: Q1={:.2} Median={:.2} Q3={:.2} IQR={:.2}",
+                    outlier_report.q1,
+                    outlier_report.median,
+                    outlier_report.q3,
+                    outlier_report.iqr
+                );
+                if !outlier_report.outlier_indices.is_empty() {
+                    println!(
+                        "⚠️  {} entropy outlier(s) detected (outside {:.2}-{:.2})",
+                        outlier_report.outlier_indices.len(),
+                        outlier_report.lower_fence,
+                        outlier_report.upper_fence
+                    );
+                }
+            }
+        }
+
+        // Save cache
+        stats.cache_hits = Some(cache_hits);
+        if let Err(e) = cache.save() {
+            if !args.json {
+                eprintln!("⚠️  Failed to save entropy cache: {}", e);
+            }
+        } else if !args.json && cache.entries_count() > 0 {
+            println!(
+                "💾 Cache: {} entries ({} hits this run)",
+                cache.entries_count(),
+                cache_hits
+            );
         }
     }
 
@@ -292,6 +372,26 @@ fn main() -> Result<()> {
         upload_snapshot(server_url, &stats);
     }
 
+    // PHASE 5: Watch mode -- real-time filesystem monitoring (#8)
+    if args.watch {
+        println!(
+            "\n👁️  Watching '{}' for changes (Ctrl+C to stop)...",
+            root_path.display()
+        );
+
+        let watcher = watch::FileSystemWatcher::new(&root_path)
+            .map_err(|e| anyhow::anyhow!("Failed to start watcher: {}", e))?;
+
+        loop {
+            let events = watcher.poll(std::time::Duration::from_secs(1));
+            for event in events {
+                for path in &event.paths {
+                    println!("  {} {}", event.kind, path);
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -301,6 +401,11 @@ fn print_human_report(stats: &CliScanStats) {
         "✅ Scan Complete in {:.2}s",
         stats.scan_duration_ms as f64 / 1000.0
     );
+    if let Some(device) = &stats.device_type {
+        if let Some(threads) = stats.threads_used {
+            println!("⚡ Device: {} | Threads: {}", device, threads);
+        }
+    }
     println!("------------------------------------------------");
     println!("📂 Location : {}", stats.root_path);
     println!("📄 Files    : {}", stats.total_files);
@@ -331,6 +436,11 @@ fn print_human_report(stats: &CliScanStats) {
         // Add entropy if available
         if let Some(ent) = file.entropy {
             info_parts.push(format!("Entropy:{:.1}", ent));
+        }
+
+        // Add outlier flag
+        if file.entropy_outlier == Some(true) {
+            info_parts.push("⚠️OUTLIER".to_string());
         }
 
         // Add risk level if available

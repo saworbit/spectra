@@ -9,6 +9,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### v0.6.0 - "The Living Engine" - Performance, Visualization & Intelligence
+
+**10 improvements inspired by open-source ecosystem research (Spacedrive, fclones, diskonaut, Filelight, notify-rs, and others).**
+
+#### Core Library (`spectra-core` v0.2.0)
+
+**Device-Aware I/O Tuning:**
+- Auto-detects storage type (SSD vs HDD) using `sysinfo` crate
+- Thread count auto-tuned: SSDs get full CPU parallelism, HDDs get 1-2 threads
+- `DeviceType` enum and `detect_device_type()` / `recommended_threads()` public API
+- Builder pattern: `Scanner::new(path, limit).with_threads(n)`
+
+**Progressive Scan Results:**
+- `Scanner::with_progress(callback)` builder method for streaming scan updates
+- `ScanProgress` struct emits files_scanned, folders_scanned, bytes_scanned
+- Progress callback fires every 1000 items for low overhead
+- Tauri integration emits `scan-progress` events to the frontend
+
+**Hash/Entropy Caching:**
+- New `cache.rs` module with `ScanCache` struct
+- Metadata-keyed cache: `mtime + size` invalidation (no re-read needed)
+- Persists as JSON in `~/.spectra/cache/scan_{hash}.json`
+- API: `load()`, `get_entropy()`, `put_entropy()`, `save()`
+- 2 unit tests for cache operations
+
+**Path Prefix Compression:**
+- New `path_pool.rs` module with `PathPool` struct
+- Interns common directory prefixes to reduce memory on large scans
+- API: `intern()` returns `CompactPath`, `resolve()` reconstructs full path
+- `estimated_savings()` reports memory saved
+- 3 unit tests
+
+**Transport Abstraction:**
+- New `transport.rs` module with unified command interface
+- `SpectraCommand` enum: Scan, GetHistory, GetVelocity, GetSnapshot
+- `SpectraResponse` enum: ScanResult, History, Velocity, Snapshot, Error
+- `Transport` trait with `execute()` method
+- `DirectExecutor` for in-process scan commands
+- Enables future CLI, Tauri IPC, and HTTP transport sharing
+
+**New Dependencies:**
+- `sysinfo = "0.32"` (device detection)
+- `serde_json = "1.0"` (cache serialization)
+
+#### CLI Enhancements (`spectra-cli`)
+
+**IQR-Based Entropy Outlier Detection:**
+- New `analysis/outliers.rs` module
+- Statistical IQR method: Q1, Q3, IQR, lower/upper fences
+- Identifies anomalous entropy values relative to peers (not fixed thresholds)
+- Outlier files flagged with `entropy_outlier: true` in output
+- Console output: quartile stats and outlier warnings
+- 5 unit tests
+
+**Filesystem Watching:**
+- New `watch.rs` module using `notify` crate v6
+- `--watch` CLI flag for real-time monitoring after scan
+- `FileSystemWatcher` with `WatchEvent` struct and `WatchEventKind` enum
+- Uses `ReadDirectoryChangesW` on Windows, inotify on Linux, FSEvents on macOS
+- Event loop with configurable poll timeout
+
+**Cache Integration:**
+- Entropy results cached between runs (via `spectra-core` ScanCache)
+- Cache hit counter displayed in output
+- Automatic invalidation when file metadata changes
+
+**New Dependencies:**
+- `notify = "6"` (filesystem watching)
+
+#### Server Enhancements (`spectra-server`)
+
+**New API Endpoints:**
+- `GET /api/v1/snapshot/:agent_id?timestamp=<ts>` - Point-in-time snapshot retrieval
+- `GET /api/v1/aggregate/:agent_id?start=&end=&bucket_seconds=` - Time-series bucketing with configurable intervals
+
+**Database Indexes:**
+- `idx_snapshots_agent` on `agent_id` column
+- `idx_snapshots_agent_time` on `agent_id + timestamp` compound index
+
+#### Frontend Enhancements (`app`)
+
+**Sunburst Visualization:**
+- New `SunburstChart.tsx` component using `@nivo/sunburst`
+- Table/Sunburst toggle in Top Extensions card
+- Shows top 12 extensions + "other" bucket
+- Interactive hover tooltips with size and count
+
+**Progressive Scan UI:**
+- Real-time progress display during scanning (files, folders, bytes)
+- Animated progress bar with pulse animation
+- Listens for Tauri `scan-progress` events
+
+**Session Space-Freed Counter:**
+- Green banner shows total bytes/files freed during session
+- Tracks deletions via `window.__spectraTrackDeletion` (callable from Tauri commands)
+- Persists across scans within same session
+
+**Device Info Display:**
+- Overview card shows detected device type and thread count
+- Reflects device-aware I/O tuning from core
+
+**New Dependencies:**
+- `@nivo/sunburst ^0.84.0`
+
+#### Test Results
+
+```
+spectra-core:  9 tests passed (was 1)
+spectra-cli:  17 tests passed (was 12)
+workspace:    26 tests total
+clippy:        0 warnings
+tsc --noEmit:  Clean
+```
+
 ### Security Hardening & Dependency Audit (v0.5.1)
 
 **Security Fixes:**

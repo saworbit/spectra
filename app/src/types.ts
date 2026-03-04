@@ -16,6 +16,16 @@ export interface ScanStats {
   scan_duration_ms: number;
   extensions: Record<string, ExtensionStat>;
   top_files: FileRecord[];
+  device_type?: string;
+  threads_used?: number;
+}
+
+// --- Scan Progress (#1 - Progressive scan) ---
+
+export interface ScanProgress {
+  files_scanned: number;
+  folders_scanned: number;
+  bytes_scanned: number;
 }
 
 // --- Time-Travel Analytics Types ---
@@ -42,6 +52,22 @@ export interface VelocityReport {
   duration_seconds: number;
   growth_bytes: number; // Can be negative (shrinkage)
   growth_files: number;
-  bytes_per_second: number; // The Velocity (Δ/Δt)
+  bytes_per_second: number; // The Velocity (delta_bytes / delta_time)
   extension_deltas: ExtensionDelta[];
+}
+
+// --- Time-Series Aggregation (#2) ---
+
+export interface TimeSeriesBucket {
+  bucket_start: number;
+  bucket_end: number;
+  avg_size_bytes: number;
+  avg_file_count: number;
+  snapshot_count: number;
+}
+
+export interface AggregateResponse {
+  buckets: TimeSeriesBucket[];
+  /** True if the snapshot count hit the server-side cap (results may be incomplete). */
+  truncated: boolean;
 }

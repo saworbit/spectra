@@ -10,8 +10,94 @@ use jwalk::WalkDir;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
+
+pub mod cache;
+pub mod path_pool;
+pub mod transport;
+
+pub use cache::ScanCache;
+pub use path_pool::PathPool;
+
+// --- Device-Aware I/O (#6) ---
+
+/// Device type for I/O thread tuning.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DeviceType {
+    SSD,
+    HDD,
+    Unknown,
+}
+
+/// Detect whether the given path resides on an SSD or HDD.
+///
+/// On Windows, `canonicalize` produces extended-length paths that won't match
+/// sysinfo mount points directly. This function normalizes:
+/// - `\\?\C:\...` -> `c:\...`  (extended-length local path)
+/// - `\\?\UNC\server\share\...` -> `\\server\share\...`  (extended-length UNC)
+pub fn detect_device_type(path: &Path) -> DeviceType {
+    use sysinfo::Disks;
+
+    let disks = Disks::new_with_refreshed_list();
+    let canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let mut path_str = canonical.to_string_lossy().to_lowercase();
+
+    // Normalize Windows extended-length path prefixes:
+    // \\?\UNC\server\share -> \\server\share  (must check before \\?\)
+    // \\?\C:\...           -> c:\...
+    if path_str.starts_with(r"\\?\unc\") {
+        path_str = format!(r"\\{}", &path_str[8..]).into();
+    } else if path_str.starts_with(r"\\?\") {
+        path_str = path_str[4..].to_string().into();
+    }
+
+    let mut best_match: Option<(usize, DeviceType)> = None;
+
+    for disk in &disks {
+        let mount_str = disk.mount_point().to_string_lossy().to_lowercase();
+        if path_str.starts_with(&*mount_str) {
+            let len = mount_str.len();
+            let device = match disk.kind() {
+                sysinfo::DiskKind::SSD => DeviceType::SSD,
+                sysinfo::DiskKind::HDD => DeviceType::HDD,
+                _ => DeviceType::Unknown,
+            };
+            if best_match.is_none() || len > best_match.unwrap().0 {
+                best_match = Some((len, device));
+            }
+        }
+    }
+
+    best_match.map(|(_, d)| d).unwrap_or(DeviceType::Unknown)
+}
+
+/// Recommended thread count based on device type.
+/// SSDs benefit from full parallelism; HDDs are seek-limited.
+/// Always capped at the available CPU count.
+pub fn recommended_threads(device: DeviceType) -> usize {
+    let cpus = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+
+    match device {
+        DeviceType::SSD => cpus,
+        DeviceType::HDD => 2.min(cpus),
+        DeviceType::Unknown => (cpus / 2).max(1).min(cpus),
+    }
+}
+
+// --- Progress Streaming (#1) ---
+
+/// Progress information emitted during scanning.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScanProgress {
+    pub files_scanned: u64,
+    pub folders_scanned: u64,
+    pub bytes_scanned: u64,
+}
+
+// --- Data Models ---
 
 /// Represents a file on disk, sortable by size for "Top N" calculations.
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
@@ -48,34 +134,71 @@ pub struct ScanStats {
     pub scan_duration_ms: u128,
     pub extensions: HashMap<String, ExtensionStat>,
     pub top_files: Vec<FileRecord>,
+    /// Device type detected for the scanned path.
+    #[serde(default)]
+    pub device_type: Option<DeviceType>,
+    /// Number of threads used for this scan.
+    #[serde(default)]
+    pub threads_used: Option<usize>,
 }
+
+// --- Scanner ---
 
 pub struct Scanner {
     root: PathBuf,
     top_limit: usize,
+    num_threads: usize,
+    device: DeviceType,
+    progress_callback: Option<Box<dyn Fn(ScanProgress) + Send>>,
 }
 
 impl Scanner {
     pub fn new(root: impl Into<PathBuf>, top_limit: usize) -> Self {
+        let root = root.into();
+        let device = detect_device_type(&root);
+        let threads = recommended_threads(device);
+
         Self {
-            root: root.into(),
+            root,
             top_limit,
+            num_threads: threads,
+            device,
+            progress_callback: None,
         }
     }
 
+    /// Override the auto-detected thread count.
+    pub fn with_threads(mut self, threads: usize) -> Self {
+        self.num_threads = threads.max(1);
+        self
+    }
+
+    /// Set a progress callback for streaming scan updates.
+    /// Called approximately every 1000 items processed.
+    pub fn with_progress<F: Fn(ScanProgress) + Send + 'static>(mut self, callback: F) -> Self {
+        self.progress_callback = Some(Box::new(callback));
+        self
+    }
+
     /// Executes the parallel scan and returns the aggregated statistics.
+    /// Thread count is automatically tuned based on device type (SSD vs HDD).
     pub fn scan(&self) -> Result<ScanStats> {
         let start_time = Instant::now();
 
         let mut stats = ScanStats {
             root_path: self.root.display().to_string(),
+            device_type: Some(self.device),
+            threads_used: Some(self.num_threads),
             ..Default::default()
         };
 
-        // Heap to track top N files efficiently
         let mut top_files_heap = BinaryHeap::with_capacity(self.top_limit + 1);
+        let mut item_counter = 0u64;
 
-        for dir_entry in WalkDir::new(&self.root).into_iter().flatten() {
+        let walker = WalkDir::new(&self.root)
+            .parallelism(jwalk::Parallelism::RayonNewPool(self.num_threads));
+
+        for dir_entry in walker.into_iter().flatten() {
             if let Ok(meta) = dir_entry.metadata() {
                 if meta.is_file() {
                     let size = meta.len();
@@ -102,6 +225,18 @@ impl Scanner {
                 } else if meta.is_dir() {
                     stats.total_folders += 1;
                 }
+
+                // Emit progress every 1000 items
+                item_counter += 1;
+                if item_counter % 1000 == 0 {
+                    if let Some(cb) = &self.progress_callback {
+                        cb(ScanProgress {
+                            files_scanned: stats.total_files,
+                            folders_scanned: stats.total_folders,
+                            bytes_scanned: stats.total_size_bytes,
+                        });
+                    }
+                }
             }
         }
 
@@ -120,6 +255,8 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
+    use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
+    use std::sync::Arc;
     use tempfile::tempdir;
 
     #[test]
@@ -127,7 +264,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.txt");
         let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "Hello World").unwrap(); // ~12 bytes
+        writeln!(file, "Hello World").unwrap();
 
         let scanner = Scanner::new(dir.path(), 5);
         let stats = scanner.scan().unwrap();
@@ -136,5 +273,41 @@ mod tests {
         assert!(stats.total_size_bytes > 0);
         assert_eq!(stats.extensions.get("txt").unwrap().count, 1);
         assert_eq!(stats.top_files.len(), 1);
+        assert!(stats.device_type.is_some());
+        assert!(stats.threads_used.is_some());
+    }
+
+    #[test]
+    fn test_device_detection() {
+        let device = detect_device_type(Path::new("."));
+        // Just verify it doesn't panic -- result varies by hardware
+        println!("Detected device type: {:?}", device);
+    }
+
+    #[test]
+    fn test_thread_recommendations() {
+        assert!(recommended_threads(DeviceType::SSD) >= 1);
+        assert!(recommended_threads(DeviceType::HDD) <= 2);
+        assert!(recommended_threads(DeviceType::Unknown) >= 1);
+    }
+
+    #[test]
+    fn test_progress_callback() {
+        let dir = tempdir().unwrap();
+        for i in 0..50 {
+            let p = dir.path().join(format!("file_{}.txt", i));
+            let mut f = File::create(p).unwrap();
+            writeln!(f, "content {}", i).unwrap();
+        }
+
+        let progress_count = Arc::new(AtomicU64::new(0));
+        let counter = progress_count.clone();
+
+        let scanner = Scanner::new(dir.path(), 5).with_progress(move |_progress| {
+            counter.fetch_add(1, AtomicOrdering::Relaxed);
+        });
+
+        let stats = scanner.scan().unwrap();
+        assert_eq!(stats.total_files, 50);
     }
 }

@@ -371,7 +371,102 @@ th {
   font-size: 0.9rem;
 }
 
-/* Tab Navigation (for future use) */
+/* Session Space Freed Banner (#7) */
+.space-freed-banner {
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #34d399;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Progressive Scan Progress (#1) */
+.scan-progress {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.progress-stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 0.75rem;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.progress-bar {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: progress-pulse 1.5s ease-in-out infinite;
+  width: 40%;
+}
+
+@keyframes progress-pulse {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(250%); }
+}
+
+/* Visualization Toggle (#3 - Sunburst) */
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.card-header-row h2 {
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.viz-toggle {
+  display: flex;
+  gap: 4px;
+  background: #222;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.viz-btn {
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.viz-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.viz-btn:hover:not(.active) {
+  color: #ccc;
+}
+
+/* Tab Navigation */
 .tab-nav {
   display: flex;
   gap: 1rem;

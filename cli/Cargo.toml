@@ -29,6 +29,9 @@ reqwest = { version = "0.12", features = ["json", "blocking"] }
 chrono = "0.4"
 config = "0.13"
 
+# Phase 5: Real-time filesystem watching
+notify = "6"
+
 # Phase 2: Semantic (Optional Feature)
 # rust-bert pulls in libtorch (~500MB+). We gate it.
 [dependencies.rust-bert]

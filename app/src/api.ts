@@ -5,15 +5,12 @@
  * and velocity analytics.
  */
 
-import { VelocityReport } from './types';
+import { VelocityReport, AgentSnapshot, AggregateResponse } from './types';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
 
 /**
  * Fetch available timestamps for a specific agent
- *
- * @param agentId - The agent identifier
- * @returns Array of Unix timestamps (seconds) when snapshots are available
  */
 export async function fetchAgentHistory(agentId: string): Promise<number[]> {
   try {
@@ -30,11 +27,6 @@ export async function fetchAgentHistory(agentId: string): Promise<number[]> {
 
 /**
  * Calculate velocity (growth rate) between two timestamps
- *
- * @param agentId - The agent identifier
- * @param startTime - Start timestamp (Unix seconds)
- * @param endTime - End timestamp (Unix seconds)
- * @returns VelocityReport with growth metrics and extension deltas
  */
 export async function fetchVelocity(
   agentId: string,
@@ -51,7 +43,6 @@ export async function fetchVelocity(
 
     const data: VelocityReport = await response.json();
 
-    // Check if we got meaningful data
     if (data.duration_seconds === 0) {
       console.warn('No velocity data available for the selected time range');
       return null;
@@ -65,11 +56,62 @@ export async function fetchVelocity(
 }
 
 /**
- * Format bytes to human-readable string with sign
+ * Fetch a snapshot at or closest before a given timestamp (#2 - Time-Travel)
+ */
+export async function fetchSnapshotAtTime(
+  agentId: string,
+  timestamp?: number
+): Promise<AgentSnapshot | null> {
+  try {
+    const params = timestamp ? `?timestamp=${timestamp}` : '';
+    const url = `${SERVER_URL}/api/v1/snapshot/${agentId}${params}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch snapshot:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch time-series aggregation with configurable bucket sizes (#2 - Time-Travel)
  *
- * @param bytes - Number of bytes (can be negative)
- * @param showSign - Whether to show + sign for positive values
- * @returns Formatted string like "+1.2 GB" or "-500 MB"
+ * Returns an AggregateResponse with a `truncated` flag indicating whether
+ * the server-side snapshot cap was hit (results may be incomplete for very
+ * large time ranges).
+ */
+export async function fetchAggregate(
+  agentId: string,
+  start: number,
+  end: number,
+  bucketSeconds: number = 3600
+): Promise<AggregateResponse> {
+  try {
+    const url = `${SERVER_URL}/api/v1/aggregate/${agentId}?start=${start}&end=${end}&bucket_seconds=${bucketSeconds}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data: AggregateResponse = await response.json();
+    if (data.truncated) {
+      console.warn(`Aggregate results truncated for ${agentId} (${start}-${end}). Consider narrowing the time range.`);
+    }
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch aggregate:', error);
+    return { buckets: [], truncated: false };
+  }
+}
+
+/**
+ * Format bytes to human-readable string with sign
  */
 export function formatBytes(bytes: number, showSign = false): string {
   const sign = bytes >= 0 ? (showSign ? '+' : '') : '-';
@@ -93,9 +135,6 @@ export function formatBytes(bytes: number, showSign = false): string {
 
 /**
  * Format Unix timestamp to human-readable date
- *
- * @param timestamp - Unix timestamp in seconds
- * @returns Formatted date string
  */
 export function formatTimestamp(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString();
@@ -103,9 +142,6 @@ export function formatTimestamp(timestamp: number): string {
 
 /**
  * Format velocity (bytes/sec) to human-readable rate
- *
- * @param bytesPerSecond - Velocity in bytes per second
- * @returns Formatted string like "1.5 MB/s"
  */
 export function formatVelocity(bytesPerSecond: number): string {
   const absRate = Math.abs(bytesPerSecond);

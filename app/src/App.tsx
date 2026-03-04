@@ -1,9 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import "./App.css";
-import { ScanStats, VelocityReport } from "./types";
+import { ScanStats, ScanProgress, VelocityReport } from "./types";
 import { TimeSlider } from "./TimeSlider";
 import { VelocityCard } from "./VelocityCard";
+import { SunburstChart } from "./components/SunburstChart";
 import { fetchVelocity } from "./api";
 
 // Helper to format bytes into human-readable strings
@@ -17,13 +19,14 @@ const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 type AppMode = "scan" | "timetravel";
+type VizMode = "table" | "sunburst";
 
 function App() {
   // Read URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const urlAgentId = urlParams.get('agentId');
 
-  // Tab Management - auto-switch to time-travel if agentId in URL
+  // Tab Management
   const [mode, setMode] = useState<AppMode>(urlAgentId ? "timetravel" : "scan");
 
   // Local Scan State
@@ -32,30 +35,56 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Progressive scan progress (#1)
+  const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+
+  // Visualization mode (#3 - Sunburst)
+  const [vizMode, setVizMode] = useState<VizMode>("table");
+
+  // Session "space freed" counter (#7)
+  const [spaceFreed, setSpaceFreed] = useState(0);
+  const [filesFreed, setFilesFreed] = useState(0);
+
   // Time-Travel State
   const [agentId, setAgentId] = useState(urlAgentId || "agent_01");
   const [velocityReport, setVelocityReport] = useState<VelocityReport | null>(null);
   const [velocityLoading, setVelocityLoading] = useState(false);
+
+  // Listen for progressive scan events (#1)
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+
+    listen<ScanProgress>('scan-progress', (event) => {
+      setScanProgress(event.payload);
+    }).then((unlisten) => {
+      cleanup = unlisten;
+    }).catch(() => {
+      // Not in Tauri environment — ignore
+    });
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
 
   async function scan() {
     if (!path) return;
     setLoading(true);
     setError(null);
     setStats(null);
+    setScanProgress(null);
 
     try {
-      // Check if running in Tauri
       if (typeof invoke === 'undefined') {
         throw new Error('Tauri runtime not available. Please run the app using: npm run tauri dev');
       }
 
-      // Invoke the Rust command 'scan_directory'
-      // limit: number of top files to return
       const result = await invoke<ScanStats>("scan_directory", {
         path,
         limit: 10
       });
       setStats(result);
+      setScanProgress(null);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -77,10 +106,29 @@ function App() {
     }
   }, [agentId]);
 
+  // Track space freed from governance actions (#7)
+  // Exposed on window for Tauri commands to call when files are deleted
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__spectraTrackDeletion = (sizeBytes: number) => {
+      setSpaceFreed(prev => prev + sizeBytes);
+      setFilesFreed(prev => prev + 1);
+    };
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__spectraTrackDeletion;
+    };
+  }, []);
+
   return (
     <main className="container">
       <h1>Spectra Dashboard</h1>
       <p className="subtitle">Enterprise Content Topology & Time-Travel Analytics</p>
+
+      {/* Session Space Freed Banner (#7) */}
+      {spaceFreed > 0 && (
+        <div className="space-freed-banner">
+          Freed {formatBytes(spaceFreed)} across {filesFreed} file{filesFreed !== 1 ? 's' : ''} this session
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="tab-nav">
@@ -88,13 +136,13 @@ function App() {
           className={`tab-button ${mode === "scan" ? "active" : ""}`}
           onClick={() => setMode("scan")}
         >
-          📂 Local Scan
+          Local Scan
         </button>
         <button
           className={`tab-button ${mode === "timetravel" ? "active" : ""}`}
           onClick={() => setMode("timetravel")}
         >
-          ⏳ Time-Travel Analytics
+          Time-Travel Analytics
         </button>
       </div>
 
@@ -120,7 +168,21 @@ function App() {
             </button>
           </form>
 
-          {error && <div className="error-banner">❌ Error: {error}</div>}
+          {/* Progressive scan progress (#1) */}
+          {loading && scanProgress && (
+            <div className="scan-progress">
+              <div className="progress-stats">
+                <span>{scanProgress.files_scanned.toLocaleString()} files</span>
+                <span>{scanProgress.folders_scanned.toLocaleString()} folders</span>
+                <span>{formatBytes(scanProgress.bytes_scanned)}</span>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-bar-fill" />
+              </div>
+            </div>
+          )}
+
+          {error && <div className="error-banner">Error: {error}</div>}
 
           {stats && (
             <div className="dashboard-grid">
@@ -128,40 +190,71 @@ function App() {
               <div className="card summary">
                 <h2>Overview</h2>
                 <div className="stat-row">
-                  <span>📂 Location:</span> <strong>{stats.root_path}</strong>
+                  <span>Location:</span> <strong>{stats.root_path}</strong>
                 </div>
                 <div className="stat-row">
-                  <span>⏱️ Duration:</span> <strong>{(stats.scan_duration_ms / 1000).toFixed(2)}s</strong>
+                  <span>Duration:</span> <strong>{(stats.scan_duration_ms / 1000).toFixed(2)}s</strong>
                 </div>
                 <div className="stat-row">
-                  <span>📄 Total Files:</span> <strong>{stats.total_files.toLocaleString()}</strong>
+                  <span>Total Files:</span> <strong>{stats.total_files.toLocaleString()}</strong>
                 </div>
                 <div className="stat-row">
-                  <span>💾 Total Size:</span> <strong>{formatBytes(stats.total_size_bytes)}</strong>
+                  <span>Total Size:</span> <strong>{formatBytes(stats.total_size_bytes)}</strong>
                 </div>
+                {stats.device_type && (
+                  <div className="stat-row">
+                    <span>Device:</span>
+                    <strong>{stats.device_type} ({stats.threads_used} threads)</strong>
+                  </div>
+                )}
               </div>
 
-              {/* Top Extensions */}
+              {/* Extensions with viz toggle (#3) */}
               <div className="card extensions">
-                <h2>Top Extensions</h2>
-                <ul>
-                  {Object.entries(stats.extensions)
-                    .sort(([, a], [, b]) => b.size - a.size)
-                    .slice(0, 5)
-                    .map(([ext, data]) => (
-                      <li key={ext} className="list-item">
-                        <span className="badge">.{ext}</span>
-                        <span className="spacer"></span>
-                        <span>{data.count} files</span>
-                        <span className="size">{formatBytes(data.size)}</span>
-                      </li>
-                    ))}
-                </ul>
+                <div className="card-header-row">
+                  <h2>Top Extensions</h2>
+                  <div className="viz-toggle">
+                    <button
+                      className={`viz-btn ${vizMode === "table" ? "active" : ""}`}
+                      onClick={() => setVizMode("table")}
+                      title="Table view"
+                    >
+                      Table
+                    </button>
+                    <button
+                      className={`viz-btn ${vizMode === "sunburst" ? "active" : ""}`}
+                      onClick={() => setVizMode("sunburst")}
+                      title="Sunburst chart"
+                    >
+                      Sunburst
+                    </button>
+                  </div>
+                </div>
+
+                {vizMode === "table" && (
+                  <ul>
+                    {Object.entries(stats.extensions)
+                      .sort(([, a], [, b]) => b.size - a.size)
+                      .slice(0, 5)
+                      .map(([ext, data]) => (
+                        <li key={ext} className="list-item">
+                          <span className="badge">.{ext}</span>
+                          <span className="spacer"></span>
+                          <span>{data.count} files</span>
+                          <span className="size">{formatBytes(data.size)}</span>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+
+                {vizMode === "sunburst" && (
+                  <SunburstChart extensions={stats.extensions} />
+                )}
               </div>
 
               {/* Heavy Hitters */}
               <div className="card files full-width">
-                <h2>🐳 Heavy Hitters (Top Files)</h2>
+                <h2>Heavy Hitters (Top Files)</h2>
                 <table>
                   <thead>
                     <tr>
@@ -223,7 +316,7 @@ function App() {
             {!velocityLoading && !velocityReport && (
               <div className="card full-width">
                 <div className="no-data">
-                  📊 Select a time range to view velocity analytics
+                  Select a time range to view velocity analytics
                   <br />
                   <br />
                   <strong>Quick Start:</strong>

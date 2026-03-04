@@ -132,10 +132,12 @@ Rust provides:
 ### How does parallel scanning work?
 
 Spectra uses [jwalk](https://github.com/Byron/jwalk) for parallel directory traversal:
+- **Device-aware threading**: Auto-detects SSD vs HDD and tunes thread count (SSDs get full CPU parallelism, HDDs get 1-2 threads)
 - Multiple threads scan different branches of the directory tree
 - Lock-free BinaryHeap for top-N file tracking
 - Zero-copy file metadata access where possible
 - Automatic load balancing across cores
+- Progress callbacks fire every 1000 items for UI streaming
 
 ### What is entropy analysis?
 
@@ -467,6 +469,43 @@ Partially:
 
 **Future enhancement**: Local SQLite storage for offline velocity queries.
 
+## New in v0.6.0
+
+### What is device-aware I/O?
+
+Spectra auto-detects your storage type (SSD vs HDD) using the `sysinfo` crate and adjusts parallelism:
+- **SSD**: Full CPU core parallelism for maximum throughput
+- **HDD**: 1-2 threads to avoid seek thrashing
+- **Unknown**: Half the CPU cores as a safe default
+
+### What is the sunburst chart?
+
+An alternative to the table view for extension breakdown. Toggle between Table and Sunburst views in the Top Extensions card. The sunburst shows the top 12 extensions as a radial chart with interactive hover tooltips.
+
+### What is IQR outlier detection?
+
+Instead of using fixed entropy thresholds, Spectra uses the Interquartile Range (IQR) statistical method to identify files with anomalous entropy relative to their peers. Files outside 1.5x IQR from Q1/Q3 are flagged as outliers.
+
+### Does Spectra cache entropy results?
+
+Yes. The `ScanCache` in `spectra-core` stores entropy values keyed by file metadata (mtime + size). When a file hasn't changed, the cached entropy is used instead of re-reading the file. Cache is stored as JSON in `~/.spectra/cache/`.
+
+### Can I watch for real-time file changes?
+
+Yes. Use the `--watch` CLI flag:
+```bash
+spectra-cli --path /data --watch
+```
+After the initial scan, Spectra monitors the directory for create/modify/delete events using the `notify` crate (uses `ReadDirectoryChangesW` on Windows, `inotify` on Linux, `FSEvents` on macOS).
+
+### What are the new server endpoints in v0.6.0?
+
+Two new endpoints for time-series intelligence:
+- `GET /api/v1/snapshot/:agent_id?timestamp=<ts>` - Retrieve a snapshot at a specific point in time
+- `GET /api/v1/aggregate/:agent_id?start=&end=&bucket_seconds=` - Aggregate snapshots into time-series buckets
+
+---
+
 ## Comparison with Other Tools
 
 ### Spectra vs WizTree
@@ -494,4 +533,4 @@ Partially:
 - **Issues**: GitHub Issues for bugs and feature requests
 - **Community**: Join our Discord (link coming soon)
 
-*This FAQ is updated regularly. Last updated: 2026-02-06*
+*This FAQ is updated regularly. Last updated: 2026-03-04*

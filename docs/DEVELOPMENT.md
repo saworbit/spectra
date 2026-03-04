@@ -105,6 +105,9 @@ This guide covers the development setup, workflows, and best practices for Spect
    # Run CLI
    cargo run -p spectra-cli -- --help
 
+   # Run CLI with watch mode
+   cargo run -p spectra-cli -- --path ./ --watch
+
    # Run GUI
    cd app && npm run tauri dev
    ```
@@ -117,9 +120,12 @@ spectra/
 │   └── workflows/          # CI/CD workflows
 │       ├── rust-ci.yml     # Rust testing pipeline
 │       └── frontend-ci.yml # Frontend testing pipeline
-├── spectra-core/           # Core scanning library
+├── spectra-core/           # Core scanning library (v0.2.0)
 │   ├── src/
-│   │   └── lib.rs         # Scanner, FileRecord, ScanStats
+│   │   ├── lib.rs         # Scanner, DeviceType, ScanProgress, ScanStats
+│   │   ├── cache.rs       # ScanCache (entropy/hash caching)
+│   │   ├── path_pool.rs   # PathPool (prefix compression)
+│   │   └── transport.rs   # Transport trait, Command/Response enums
 │   ├── Cargo.toml
 │   └── README.md
 ├── cli/                    # CLI application (spectra-cli)
@@ -129,50 +135,59 @@ spectra/
 │   │   │   ├── entropy.rs
 │   │   │   ├── heuristics.rs
 │   │   │   ├── semantic.rs
+│   │   │   ├── outliers.rs # IQR-based entropy outlier detection
 │   │   │   └── mod.rs
-│   │   └── governance/    # Phase 3: Policy engine
-│   │       ├── engine.rs
-│   │       ├── tests.rs
-│   │       └── mod.rs
+│   │   ├── governance/    # Phase 3: Policy engine
+│   │   │   ├── engine.rs
+│   │   │   ├── tests.rs
+│   │   │   └── mod.rs
+│   │   └── watch.rs       # Filesystem watching (notify crate)
 │   ├── Cargo.toml
 │   └── USAGE.md
 ├── server/                 # Spectra Server (Hub)
 │   ├── src/
-│   │   └── main.rs        # Axum REST API
+│   │   └── main.rs        # Axum REST API + snapshot/aggregate endpoints
 │   └── Cargo.toml
 ├── app/                    # Tauri + React GUI
 │   ├── src/               # React frontend
 │   │   ├── components/
-│   │   │   ├── RiskTreemap.tsx
+│   │   │   ├── RiskTreemap.tsx    # Treemap visualization
+│   │   │   ├── SunburstChart.tsx  # Sunburst extension chart
 │   │   │   └── __tests__/
-│   │   ├── types.ts
-│   │   ├── main.tsx
-│   │   └── App.tsx
+│   │   ├── TimeSlider.tsx  # Time range selector
+│   │   ├── VelocityCard.tsx # Growth metrics display
+│   │   ├── api.ts          # Server API client
+│   │   ├── types.ts        # TypeScript interfaces
+│   │   ├── App.tsx         # Main app (tabs, progress, space-freed)
+│   │   └── main.tsx        # Entry point
 │   ├── src-tauri/         # Rust backend
 │   │   ├── src/
-│   │   │   └── lib.rs     # Tauri commands
+│   │   │   └── lib.rs     # Tauri commands + scan-progress events
 │   │   └── Cargo.toml
 │   ├── package.json
 │   └── README.md
+├── docs/                   # Documentation
 ├── Cargo.toml              # Workspace manifest
-├── ARCHITECTURE.md         # Architecture deep-dive
 ├── CHANGELOG.md           # Version history
-├── CONTRIBUTING.md        # Contribution guide
-├── DEVELOPMENT.md         # This file
-├── FAQ.md                 # Frequently asked questions
 └── README.md              # Project overview
 ```
 
 ### Crate Dependencies
 
 ```
+spectra-core (foundation)
+  ├─> jwalk, serde, sysinfo, serde_json
+
 spectra-server (independent)
+  ├─> axum, surrealdb, tokio, tower-http
 
 spectra-cli
-  └── spectra-core
+  ├─> spectra-core
+  ├─> notify, clap, reqwest, chrono
 
 app (Tauri)
-  └── spectra-core
+  ├─> spectra-core (Rust backend)
+  └─> @nivo/sunburst, @nivo/treemap (React frontend)
 ```
 
 ## Development Workflow

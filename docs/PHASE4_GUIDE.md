@@ -2,7 +2,7 @@
 
 > **"From Numbers to Vision"** - Interactive Risk Visualization
 
-This guide walks you through launching and using Spectra Vision, the Phase 4 visualization interface that transforms entropy metrics into intuitive risk treemaps.
+This guide walks you through launching and using Spectra Vision, the Phase 4 visualization interface that transforms entropy metrics into intuitive risk treemaps and sunburst charts.
 
 ---
 
@@ -188,9 +188,43 @@ invoke("get_scan_tree", { path })
 
 ---
 
-## 🔮 Future Enhancements
+## Sunburst Extension Chart (v0.6.0)
 
-### Temporal Navigation (Planned)
+Phase 4 now includes a **Sunburst Chart** as an alternative to the table view for extension breakdown:
+
+### How to Use
+
+1. Run a **Deep Scan** on any directory
+2. In the **Top Extensions** card, click the **Sunburst** toggle button
+3. The chart shows the top 12 extensions by size, with remaining extensions grouped as "other"
+4. Hover over segments to see extension name, size, and file count
+
+### Technical Details
+
+- Component: `app/src/components/SunburstChart.tsx`
+- Library: `@nivo/sunburst` (React-native D3 bindings)
+- Data: Converts `Record<string, ExtensionStat>` to hierarchical sunburst format
+- Toggle: Table/Sunburst buttons in the card header row
+
+### Progressive Scan Feedback (v0.6.0)
+
+During scanning, the UI now shows real-time progress:
+- **Live counters**: files scanned, folders scanned, bytes processed
+- **Animated progress bar** with pulse animation
+- **Streaming events**: Tauri backend emits `scan-progress` events every 1000 items
+
+### Session Space-Freed Counter (v0.6.0)
+
+When governance actions free disk space, a green banner appears showing:
+- Total bytes freed this session
+- Total files freed this session
+- Persists across multiple scans within the same session
+
+---
+
+## Future Enhancements
+
+### Temporal Navigation (Implemented in v0.5.0)
 - **Snapshot History**: Store multiple scans over time
 - **Time Slider**: Scrub through historical data
 - **Growth Visualization**: Animate changes between T₀ and T₁

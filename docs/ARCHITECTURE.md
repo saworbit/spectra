@@ -47,21 +47,39 @@ The Agent scans locally, generates vector embeddings and metadata summaries, and
 
 The system is composed of three decoupled layers: **The Agent** (Edge), **The Transport** (Nervous System), and **The Platform** (Brain).
 
-### Current Implementation: Dual-Crate Workspace
+### Current Implementation: Four-Crate Workspace
 
-**Architecture:** The project is structured as a Rust workspace with two independent crates:
+**Architecture:** The project is structured as a Rust workspace with four crates sharing a core library:
 
-**1. The CLI Agent (`spectra-cli`):**
+**1. Core Library (`spectra-core` v0.2.0):**
+- **Location:** `spectra-core/` directory
+- **Purpose:** Shared scanning primitives, device detection, caching, transport abstraction
+- **Modules:**
+  - `lib.rs` - Scanner with device-aware I/O, progress callbacks, BinaryHeap top-K
+  - `cache.rs` - ScanCache for entropy/hash caching with metadata invalidation
+  - `path_pool.rs` - PathPool for path prefix compression (intern/resolve pattern)
+  - `transport.rs` - Transport trait, SpectraCommand/SpectraResponse unified interface
+- **Stack:** jwalk, serde, sysinfo, serde_json
+
+**2. The CLI Agent (`spectra-cli`):**
 - **Location:** `cli/` directory
-- **Purpose:** Headless, high-performance scanning engine
-- **Deployment:** Single binary executable for server/automation use
-- **Stack:** Pure Rust with minimal dependencies (jwalk, serde, clap)
+- **Purpose:** Headless, high-performance scanning with analysis and governance
+- **Modules:**
+  - `analysis/` - Entropy, heuristics, semantic classification, IQR outlier detection
+  - `governance/` - Policy engine with rule evaluation
+  - `watch.rs` - Real-time filesystem monitoring via `notify` crate
+- **Stack:** Rust, spectra-core, clap, notify, reqwest, chrono
 
-**2. The GUI Application (`app`):**
+**3. The GUI Application (`app`):**
 - **Location:** `app/` directory
-- **Purpose:** Desktop visualization and user interface
+- **Purpose:** Desktop visualization with progressive scanning, sunburst charts, time-travel
 - **Deployment:** Native cross-platform application (Windows, macOS, Linux)
-- **Stack:** Tauri v2 (Rust backend) + React 19 + TypeScript (frontend)
+- **Stack:** Tauri v2 (Rust backend) + React 19 + TypeScript + Nivo (sunburst, treemap)
+
+**4. The Server (`spectra-server`):**
+- **Location:** `server/` directory
+- **Purpose:** Central control plane with SurrealDB time-series, snapshot/aggregate queries
+- **Stack:** Axum, SurrealDB, tokio, tower-http
 
 ### Layer 1: The Agent (Rust)
 
@@ -73,8 +91,9 @@ The system is composed of three decoupled layers: **The Agent** (Edge), **The Tr
 - Resource Profiling: Calculates "Cost to Keep" vs. "Cost to Delete."
 
 **Current Stack:**
-- CLI: Rust, jwalk (Parallelism), serde (Serialization), clap (CLI Parsing)
-- GUI: Tauri v2, React 19, TypeScript, Vite 7 (Development)
+- Core: Rust, jwalk (Parallelism), sysinfo (Device Detection), serde (Serialization)
+- CLI: Rust, spectra-core, clap (CLI), notify (Watch), reqwest (Federation)
+- GUI: Tauri v2, React 19, TypeScript, Vite 7, Nivo (Visualization)
 
 **Future Stack:** Rusqlite (Local State), rust-bert (Content Classification).
 
@@ -108,7 +127,11 @@ The system is composed of three decoupled layers: **The Agent** (Edge), **The Tr
 - [x] Core Engine: Parallel multi-threaded walker (Rust).
 - [x] Analytics: Extension grouping and "Heavy Hitter" identification.
 - [x] Visuals: Tauri v2 + React + TypeScript foundation established.
-- [x] Architecture: Dual-crate workspace (CLI + GUI separation).
+- [x] Architecture: Four-crate workspace (core + CLI + GUI + server).
+- [x] Device-Aware I/O: Auto-detects SSD vs HDD, tunes thread count.
+- [x] Progressive Scan: Streaming progress callbacks for real-time UI feedback.
+- [x] Entropy Caching: Metadata-keyed cache avoids recomputing unchanged files.
+- [x] Path Compression: Prefix interning reduces memory on million-file scans.
 - [ ] Persistence: SQLite/DuckDB integration for history tracking.
 - [ ] Advanced Visuals: WebGL/Wasm Treemap visualization implementation.
 
@@ -333,15 +356,49 @@ cargo run -p spectra-cli -- --path ./ --server http://localhost:3000 --analyze -
 - [ ] Archive functionality implementation
 - [ ] Custom policy configuration files
 
+### Phase 5: The Living Engine (In Progress)
+
+**Goal:** Intelligent, adaptive, real-time awareness.
+
+#### Key Features (v0.6.0)
+
+1. **Device-Aware I/O:** Auto-detects SSD/HDD via `sysinfo`, tunes parallelism per device type.
+2. **IQR Outlier Detection:** Statistical identification of anomalous entropy values using interquartile range.
+3. **Entropy Caching:** Persistent cache keyed by file metadata (mtime + size), avoids redundant computation.
+4. **Sunburst Visualization:** Interactive radial chart for extension breakdown using `@nivo/sunburst`.
+5. **Progressive Scanning:** Real-time scan progress streamed from core to frontend via Tauri events.
+6. **Filesystem Watching:** `--watch` flag for real-time monitoring using `notify` crate (v6).
+7. **Session Space-Freed Counter:** Tracks total bytes/files freed during a governance session.
+8. **Path Prefix Compression:** Interns common directory prefixes to reduce memory footprint.
+9. **Transport Abstraction:** Unified `SpectraCommand`/`SpectraResponse` model across CLI, Tauri IPC, HTTP.
+10. **Time-Series Aggregation:** New `/snapshot` and `/aggregate` server endpoints with DB indexes.
+
+#### Implementation Status
+
+- [x] Device detection and thread auto-tuning
+- [x] IQR-based entropy outlier detection
+- [x] Entropy caching with metadata invalidation
+- [x] Sunburst chart component
+- [x] Progressive scan with streaming events
+- [x] Filesystem watching (notify-rs)
+- [x] Session space-freed counter
+- [x] Path prefix compression (PathPool)
+- [x] Transport abstraction layer
+- [x] Time-series aggregation endpoints
+- [ ] ML-powered anomaly detection
+- [ ] Predictive storage forecasting
+- [ ] Cost attribution analytics
+
 ## 5. Build & Development Workflow
 
 ### Workspace Structure
 
-The project uses Cargo's workspace feature to manage all three crates:
+The project uses Cargo's workspace feature to manage all four crates:
 
 ```toml
 [workspace]
 members = [
+    "spectra-core",
     "cli",
     "app/src-tauri",
     "server"
