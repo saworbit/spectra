@@ -1,19 +1,44 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set ROOT=%~dp0
-set SERVER=http://127.0.0.1:3000
+for %%I in ("%~dp0.") do set "ROOT=%%~fI"
+set "SERVER=http://127.0.0.1:3000"
+set "HEADLESS=0"
+
+if /i "%~1"=="--headless" set "HEADLESS=1"
 
 echo === Spectra Local Test Harness ===
 echo Repo: %ROOT%
 echo Server: %SERVER%
 echo.
 
-echo [1/5] Starting server in a new window...
-start "Spectra Server" cmd /k "cd /d %ROOT% && cargo run -p spectra-server"
+echo [1/5] Starting server...
+if "%HEADLESS%"=="1" (
+  if not exist "%ROOT%\\tmp" mkdir "%ROOT%\\tmp"
+  powershell -NoProfile -Command "Start-Process -FilePath 'cargo' -ArgumentList @('run','-p','spectra-server') -WorkingDirectory '%ROOT%' -RedirectStandardOutput '%ROOT%\\tmp\\server.out.log' -RedirectStandardError '%ROOT%\\tmp\\server.err.log' | Out-Null"
+) else (
+  start "Spectra Server" cmd /k "cd /d %ROOT% && cargo run -p spectra-server"
+)
 
 echo [2/5] Waiting for server to boot...
-timeout /t 3 >nul
+for /l %%i in (1,1,15) do (
+  powershell -NoProfile -Command "$c = New-Object System.Net.Sockets.TcpClient; try { $c.Connect('127.0.0.1',3000); $c.Close(); exit 0 } catch { exit 1 }"
+  if not errorlevel 1 goto :server_ready
+  timeout /t 1 >nul
+)
+echo ERROR: Server did not become ready on port 3000.
+if "%HEADLESS%"=="1" (
+  if exist "%ROOT%\\tmp\\server.out.log" (
+    echo --- Server stdout tail ---
+    powershell -NoProfile -Command "Get-Content -Tail 60 '%ROOT%\\tmp\\server.out.log'"
+  )
+  if exist "%ROOT%\\tmp\\server.err.log" (
+    echo --- Server stderr tail ---
+    powershell -NoProfile -Command "Get-Content -Tail 60 '%ROOT%\\tmp\\server.err.log'"
+  )
+)
+exit /b 1
+:server_ready
 
 for /f %%t in ('powershell -NoProfile -Command "[int][double](Get-Date -UFormat %%s)"') do set NOW=%%t
 set /a T1=NOW-7200
@@ -34,8 +59,13 @@ cargo run -p spectra-cli -- --path "%ROOT%" --limit 10 --analyze
 
 echo.
 echo Optional manual checks:
-echo - Watch mode: cd /d %ROOT% ^&^& cargo run -p spectra-cli -- --path "%ROOT%" --watch
-echo - Tauri UI:  cd /d %ROOT%\\app ^&^& npm install ^&^& npm run tauri dev
+echo - Watch mode: cd /d "%ROOT%" ^&^& cargo run -p spectra-cli -- --path "%ROOT%" --watch
+echo - Tauri UI:  cd /d "%ROOT%\\app" ^&^& npm install ^&^& npm run tauri dev
 echo.
-pause
+if "%HEADLESS%"=="1" (
+  taskkill /im spectra-server.exe /f >nul 2>nul
+  echo Headless run complete.
+) else (
+  pause
+)
 endlocal
