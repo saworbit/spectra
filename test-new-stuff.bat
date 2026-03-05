@@ -64,13 +64,7 @@ echo - Tauri UI:  cd /d "%ROOT%\\app" ^&^& npm install ^&^& npm run tauri dev
 echo.
 if "%HEADLESS%"=="1" (
   taskkill /im spectra-server.exe /f >nul 2>nul
-  if exist "%ROOT%\\tmp\\server.out.log" del /q "%ROOT%\\tmp\\server.out.log" >nul 2>nul
-  if exist "%ROOT%\\tmp\\server.err.log" del /q "%ROOT%\\tmp\\server.err.log" >nul 2>nul
-  if exist "%ROOT%\\tmp\\local-test.log" (
-    echo Kept tmp\\local-test.log - output redirected
-  ) else (
-    if exist "%ROOT%\\tmp" rmdir /s /q "%ROOT%\\tmp"
-  )
+  if exist "%ROOT%\\tmp" rmdir /s /q "%ROOT%\\tmp"
   echo Headless run complete.
 ) else (
   pause

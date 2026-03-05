@@ -521,7 +521,7 @@ Headless mode (no extra windows; writes logs under `tmp/`):
 test-new-stuff.bat --headless
 ```
 
-When running headless with output redirection, the script keeps `tmp/local-test.log` for review and cleans up other server logs.
+Headless mode cleans up `tmp/` at the end of the run.
 
 ## Release Process
 
