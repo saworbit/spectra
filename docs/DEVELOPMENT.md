@@ -507,6 +507,22 @@ npx tsc --noEmit
 npm run build
 ```
 
+### Local Smoke Test (Windows)
+
+Use the built-in harness to validate server endpoints and CLI scanning:
+
+```bat
+test-new-stuff.bat
+```
+
+Headless mode (no extra windows; writes logs under `tmp/`):
+
+```bat
+test-new-stuff.bat --headless
+```
+
+When running headless with output redirection, the script keeps `tmp/local-test.log` for review and cleans up other server logs.
+
 ## Release Process
 
 (Maintainers only)
