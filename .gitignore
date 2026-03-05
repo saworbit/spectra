@@ -14,3 +14,5 @@ Cargo.lock
 # OS junk
 .DS_Store
 Thumbs.db
+# Local test artifacts
+tmp/

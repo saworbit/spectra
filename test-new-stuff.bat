@@ -21,10 +21,10 @@ if "%HEADLESS%"=="1" (
 )
 
 echo [2/5] Waiting for server to boot...
-for /l %%i in (1,1,15) do (
+for /l %%i in (1,1,60) do (
   powershell -NoProfile -Command "$c = New-Object System.Net.Sockets.TcpClient; try { $c.Connect('127.0.0.1',3000); $c.Close(); exit 0 } catch { exit 1 }"
   if not errorlevel 1 goto :server_ready
-  timeout /t 1 >nul
+  ping -n 2 127.0.0.1 >nul
 )
 echo ERROR: Server did not become ready on port 3000.
 if "%HEADLESS%"=="1" (
@@ -64,6 +64,13 @@ echo - Tauri UI:  cd /d "%ROOT%\\app" ^&^& npm install ^&^& npm run tauri dev
 echo.
 if "%HEADLESS%"=="1" (
   taskkill /im spectra-server.exe /f >nul 2>nul
+  if exist "%ROOT%\\tmp\\server.out.log" del /q "%ROOT%\\tmp\\server.out.log" >nul 2>nul
+  if exist "%ROOT%\\tmp\\server.err.log" del /q "%ROOT%\\tmp\\server.err.log" >nul 2>nul
+  if exist "%ROOT%\\tmp\\local-test.log" (
+    echo Kept tmp\\local-test.log - output redirected
+  ) else (
+    if exist "%ROOT%\\tmp" rmdir /s /q "%ROOT%\\tmp"
+  )
   echo Headless run complete.
 ) else (
   pause
