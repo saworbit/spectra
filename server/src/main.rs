@@ -111,6 +111,36 @@ fn default_bucket_size() -> i64 {
     3600
 }
 
+async fn ensure_index(db: &Surreal<surrealdb::engine::local::Db>, name: &str, fields: &str) {
+    let query_if = format!(
+        "DEFINE INDEX IF NOT EXISTS {} ON snapshots FIELDS {}",
+        name, fields
+    );
+    match db.query(query_if).await {
+        Ok(_) => (),
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("already exists") {
+                tracing::info!("Index {} already exists", name);
+                return;
+            }
+
+            if msg.contains("Parse error") || msg.contains("expected ON") {
+                tracing::warn!(
+                    "Index {}: IF NOT EXISTS unsupported, retrying without it",
+                    name
+                );
+                let query = format!("DEFINE INDEX {} ON snapshots FIELDS {}", name, fields);
+                if let Err(e2) = db.query(query).await {
+                    tracing::warn!("Index {} creation skipped: {}", name, e2);
+                }
+            } else {
+                tracing::warn!("Index {} creation skipped: {}", name, e);
+            }
+        }
+    }
+}
+
 /// Legacy policy structure (Phase 3.0 - kept for backward compatibility)
 #[derive(Serialize, Deserialize, Debug)]
 struct Policy {
@@ -517,22 +547,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     db.use_ns("spectra").use_db("telemetry").await?;
 
     // Create indexes for query performance.
-    // Uses IF NOT EXISTS for idempotency with persistent backends.
-    // Non-critical: log failures but don't abort startup.
-    match db
-        .query("DEFINE INDEX IF NOT EXISTS idx_snapshots_agent ON snapshots FIELDS agent_id")
-        .await
-    {
-        Ok(_) => {}
-        Err(e) => tracing::warn!("Index idx_snapshots_agent creation skipped: {}", e),
-    }
-    match db
-        .query("DEFINE INDEX IF NOT EXISTS idx_snapshots_agent_time ON snapshots FIELDS agent_id, timestamp")
-        .await
-    {
-        Ok(_) => {}
-        Err(e) => tracing::warn!("Index idx_snapshots_agent_time creation skipped: {}", e),
-    }
+    // Tries IF NOT EXISTS, then falls back for older SurrealDB versions.
+    ensure_index(&db, "idx_snapshots_agent", "agent_id").await;
+    ensure_index(&db, "idx_snapshots_agent_time", "agent_id, timestamp").await;
 
     tracing::info!("🗄️  Database initialized (in-memory mode) with indexes");
 
