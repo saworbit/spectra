@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CLI UX & Roadmap
+
+**CLI Progress Spinner:**
+- Added `indicatif`-powered spinner to `spectra-cli` for live scan feedback
+- Displays running counters: files scanned, folders scanned, bytes scanned
+- Wired through the existing `Scanner::with_progress` callback in `spectra-core`
+- Suppressed in `--json` mode to keep output machine-parseable
+- Cleared on completion so the human report renders cleanly
+
+**Scanner Progress Cadence (`spectra-core`):**
+- Progress callback now fires every 1000 items **OR** every 250ms, whichever
+  hits first. The time-based flush keeps mid-sized scans visible without
+  adding overhead on large scans.
+- A final emission is now guaranteed at the end of the scan whenever at least
+  one item was processed, so very small/fast scans (under both thresholds)
+  still produce at least one update. Previously these scans completed silent.
+- `test_progress_callback` strengthened to assert ≥1 emission for small scans.
+- Backwards compatible: callers using `with_progress` see strictly more (not
+  fewer) emissions; no API changes.
+
+**Documentation:**
+- Added [docs/ROADMAP.md](docs/ROADMAP.md) — public roadmap covering onboarding/distribution (crates.io, `cargo-dist`), build hygiene (`justfile`/`xtask`), `tracing`-based observability, CLI/analysis enhancements, time-travel capacity forecasting, GUI, server, testing, security, and docs work. Status legend (✅/🚧/🔜/💭) per item.
+- Linked the roadmap from the README under a new "Roadmap" section.
+
+**New Dependencies:**
+- `indicatif = "0.17"` (CLI progress bars)
+
 ### v0.6.0 - "The Living Engine" - Performance, Visualization & Intelligence
 
 **10 improvements inspired by open-source ecosystem research (Spacedrive, fclones, diskonaut, Filelight, notify-rs, and others).**

@@ -398,6 +398,11 @@ Spectra adheres to the **"Trojan Horse"** philosophy:
 
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the deep dive.
 
+## 🗺️ Roadmap
+
+What's shipped, what's next, and what's deliberately out of scope:
+see [ROADMAP.md](docs/ROADMAP.md).
+
 ## 🤝 Contributing
 
 We prioritize **Performance** and **Safety**. If it slows down the scan, it doesn't get merged.

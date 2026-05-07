@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub mod cache;
 pub mod path_pool;
@@ -174,7 +174,11 @@ impl Scanner {
     }
 
     /// Set a progress callback for streaming scan updates.
-    /// Called approximately every 1000 items processed.
+    ///
+    /// Called approximately every 1000 items processed OR every 250ms,
+    /// whichever happens first. A final emission is guaranteed at the end
+    /// of the scan as long as at least one item was processed, so even
+    /// very small scans produce at least one update.
     pub fn with_progress<F: Fn(ScanProgress) + Send + 'static>(mut self, callback: F) -> Self {
         self.progress_callback = Some(Box::new(callback));
         self
@@ -194,6 +198,9 @@ impl Scanner {
 
         let mut top_files_heap = BinaryHeap::with_capacity(self.top_limit + 1);
         let mut item_counter = 0u64;
+        let mut last_progress_emit = Instant::now();
+        const PROGRESS_TIME_INTERVAL: Duration = Duration::from_millis(250);
+        const PROGRESS_ITEM_INTERVAL: u64 = 1000;
 
         let walker = WalkDir::new(&self.root)
             .parallelism(jwalk::Parallelism::RayonNewPool(self.num_threads));
@@ -226,17 +233,33 @@ impl Scanner {
                     stats.total_folders += 1;
                 }
 
-                // Emit progress every 1000 items
+                // Emit progress every 1000 items OR every 250ms — whichever
+                // hits first. The time-based flush keeps small scans visible.
                 item_counter += 1;
-                if item_counter.is_multiple_of(1000) {
-                    if let Some(cb) = &self.progress_callback {
+                if let Some(cb) = &self.progress_callback {
+                    let by_count = item_counter.is_multiple_of(PROGRESS_ITEM_INTERVAL);
+                    let by_time = last_progress_emit.elapsed() >= PROGRESS_TIME_INTERVAL;
+                    if by_count || by_time {
                         cb(ScanProgress {
                             files_scanned: stats.total_files,
                             folders_scanned: stats.total_folders,
                             bytes_scanned: stats.total_size_bytes,
                         });
+                        last_progress_emit = Instant::now();
                     }
                 }
+            }
+        }
+
+        // Final emission so small scans (under both the 1000-item and 250ms
+        // thresholds) still produce at least one progress update.
+        if let Some(cb) = &self.progress_callback {
+            if item_counter > 0 {
+                cb(ScanProgress {
+                    files_scanned: stats.total_files,
+                    folders_scanned: stats.total_folders,
+                    bytes_scanned: stats.total_size_bytes,
+                });
             }
         }
 
@@ -309,5 +332,11 @@ mod tests {
 
         let stats = scanner.scan().unwrap();
         assert_eq!(stats.total_files, 50);
+        // Even a tiny scan (well under 1000 items, likely under 250ms) must
+        // produce at least one progress emission via the end-of-scan flush.
+        assert!(
+            progress_count.load(AtomicOrdering::Relaxed) >= 1,
+            "expected at least one progress emission for a small scan"
+        );
     }
 }

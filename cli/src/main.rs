@@ -8,10 +8,12 @@
 use anyhow::Result;
 use clap::Parser;
 use humansize::{format_size, DECIMAL};
+use indicatif::{ProgressBar, ProgressStyle};
 use jwalk::WalkDir;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
 
 // Import core scanner
 use spectra_core::{
@@ -230,8 +232,38 @@ fn main() -> Result<()> {
 
     // USE CORE SCANNER for basic scanning (Phase 1)
     // Device-aware I/O: thread count is auto-tuned based on SSD vs HDD
-    let scanner = Scanner::new(root_path.clone(), args.limit);
+    let mut scanner = Scanner::new(root_path.clone(), args.limit);
+
+    // Attach an indicatif spinner unless we're emitting JSON.
+    let progress_bar = if args.json {
+        None
+    } else {
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::with_template("{spinner:.cyan} Scanning... {msg}")
+                .unwrap()
+                .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏ "),
+        );
+        pb.enable_steady_tick(Duration::from_millis(100));
+        Some(pb)
+    };
+
+    if let Some(pb) = progress_bar.clone() {
+        scanner = scanner.with_progress(move |p| {
+            pb.set_message(format!(
+                "{} files, {} folders, {}",
+                p.files_scanned,
+                p.folders_scanned,
+                format_size(p.bytes_scanned, DECIMAL),
+            ));
+        });
+    }
+
     let core_stats = scanner.scan()?;
+
+    if let Some(pb) = &progress_bar {
+        pb.finish_and_clear();
+    }
 
     // Convert to CLI stats structure with analysis fields
     let mut stats = CliScanStats::from(core_stats);
